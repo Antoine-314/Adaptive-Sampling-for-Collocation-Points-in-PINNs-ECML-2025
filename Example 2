@@ -204,3 +204,154 @@ plt.plot(np.linspace(x_0,x_1,1000), [f(x) for x in np.linspace(x_0,x_1,1000)],co
 #ax.text(x_1-step/2, 2.25, r'Approximated area$=$'+str(round(approx_integral_trapezoid, 6)))
 #ax.text(x_1-step/2, 2, r'Relative error (%) to real value$=$'+str(round(np.abs((real_integral-approx_integral_trapezoid)/real_integral*100), 6))+r'$\%$')
 plt.show() 
+
+
+
+
+
+
+
+
+
+
+
+# DEFINE FUNCTIONS TO PLOT THE QUADRATURE ERROR FOR VARIOUS NUMBERS OF INTERVALS
+def error_refined(x_0, x_1, nb_of_trapez, nb_of_intervals):
+     step=(x_1-x_0)/(nb_of_intervals)
+     real_integral=quad(f, x_0, x_1)[0]
+
+     f_second_max=[]
+     epsilon=0
+     for k in range(nb_of_intervals):
+        x=np.linspace(x_0+k*step+epsilon,x_0+(k+1)*step-epsilon,100)
+        f_second_max.append((x[np.argmax(np.abs([f_second(z) for z in x]))],np.max([np.abs([f_second(z) for z in x])])))
+     f_second_max_values=[f_second_max[i][1] for i in range(len(f_second_max))]
+
+     weights_per_interval=[np.sqrt(f_second_max_values[i])/(sum(np.sqrt(f_second_max_values))) for i in range(len(f_second_max_values))]
+
+     nb_trapez_per_interval=[math.ceil(nb_of_trapez*w) for w in weights_per_interval]
+
+     for k in range(len(nb_trapez_per_interval)): # this forces the number of trapezoids in an interval to be at least 1. Tgis happens only if f''=0 on the whole interval.
+        if nb_trapez_per_interval[k]==0:
+                nb_trapez_per_interval[k]=1
+
+     while sum(nb_trapez_per_interval) != nb_of_trapez: # this forces the total number of trapez to be number_of_trapez by removing/adding points where the max/min is. They might be different at first due to the ceiling function
+        if sum(nb_trapez_per_interval) > nb_of_trapez:
+            nb_trapez_per_interval[np.argmax(nb_trapez_per_interval)]-=1
+        else:
+            nb_trapez_per_interval[np.argmin(nb_trapez_per_interval)]+=1
+     
+     collocation_list=[]
+     for k in range(len(nb_trapez_per_interval)): 
+        if nb_trapez_per_interval[k]>1:
+            collocation_list.append(np.linspace(x_0+k*step,x_0+(k+1)*step,nb_trapez_per_interval[k]+1)[1:-1])
+            # the [1:-1] is used so that there is no superposition where two intervals meet
+    
+     collocation_points=[]
+     if collocation_list !=[]:
+        for k in range(len(collocation_list)):
+            collocation_points=np.concatenate((collocation_points,collocation_list[k]))
+     
+     collocation_points=np.sort(np.append(collocation_points, [x_0+k*step for k in range(nb_of_intervals+1)])) # add x_0, x_1, and the endpoints of the subintervals 
+   
+     collocation_values=[f(c) for c in collocation_points] 
+
+     approx_integral_trapezoid=[]
+     for i in range(len(collocation_points)-1):
+        if collocation_values[i+1]*collocation_values[i] >=0:
+            approx_integral_trapezoid.append((collocation_points[i+1]-collocation_points[i])*(collocation_values[i+1]+collocation_values[i])/2)
+        else:
+            intersection=collocation_points[i] - collocation_values[i]*(collocation_points[i+1] - collocation_points[i])/(collocation_values[i+1] - collocation_values[i])
+            approx_integral_trapezoid.append((intersection-collocation_points[i])*collocation_values[i]/2+(collocation_points[i+1]-intersection)*collocation_values[i+1]/2)
+     approx_integral_trapezoid=sum(approx_integral_trapezoid)
+
+     return np.abs((real_integral-approx_integral_trapezoid)/real_integral)*100 
+     #return np.abs((real_integral-approx_integral_trapezoid))
+#print(error_refined(0.1, 2, 4, 2))
+
+def error_unif(x_0, x_1, nb_of_trapez):
+     real_integral=quad(f, x_0, x_1)[0]
+     approx_integral_trapezoid_unif=[]
+     collocation_points_unif=np.linspace(x_0,x_1,nb_of_trapez+1)
+     collocation_values_unif=[f(c) for c in collocation_points_unif]
+     for i in range(len(collocation_points_unif)-1):
+            if collocation_values_unif[i+1]*collocation_values_unif[i]>=0:
+                approx_integral_trapezoid_unif.append((collocation_points_unif[i+1]-collocation_points_unif[i])*(collocation_values_unif[i+1]+collocation_values_unif[i])/2)
+            else:
+                intersection_unif=collocation_points_unif[i] - collocation_values_unif[i]*(collocation_points_unif[i+1] - collocation_points_unif[i])/(collocation_values_unif[i+1] - collocation_values_unif[i])
+                approx_integral_trapezoid_unif.append((intersection_unif-collocation_points_unif[i])*collocation_values_unif[i]/2+(collocation_points_unif[i+1]-intersection_unif)*collocation_values_unif[i+1]/2)
+     approx_integral_trapezoid_unif=sum(approx_integral_trapezoid_unif)
+
+     return np.abs((real_integral-approx_integral_trapezoid_unif)/real_integral)*100
+     #return np.abs((real_integral-approx_integral_trapezoid_unif))
+#print(error_unif(0.1, 2, 2))
+
+def plot_error(x_0, x_1, max_nb_of_trapez, nb_of_intervals):
+    error_refin_values=[] 
+    error_unif_values=[]
+    possible_nb_of_trapez=[i for i in range(nb_of_intervals, max_nb_of_trapez+1)]
+    for i in possible_nb_of_trapez:
+        error_refin_values.append(error_refined(x_0,x_1,i,nb_of_intervals))
+        error_unif_values.append(error_unif(x_0,x_1,i))
+
+    plt.plot(possible_nb_of_trapez, error_refin_values, 'k', label='Refined method')
+    plt.plot(possible_nb_of_trapez, error_unif_values, 'r', label='Uniform method', linestyle='dashed', dashes=[5, 3])
+    plt.xlabel("Number of trapezoids")
+    plt.ylabel("Relative error to the real value")
+    plt.title("Plot of the relative error to the real value for {} intervals".format(nb_of_intervals))
+    plt.legend(loc="upper right")
+    plt.show()
+#plot_error(0, 2, 30, 5)
+
+
+
+
+
+
+# PLOT THE RELATIVE ERROR TO THE REAL VALUE AS A FUNCTION OF THE NUMBER OF COLLOCATION POINTS FOR VARIOUS NUMBERS OF INTERVALS
+x_0=0.1
+x_1=1
+real_integral_t=quad(f, x_0, x_1)[0]
+smallest_number_of_intervals=10
+max_nb_of_intervals=40
+max_nb_of_trapez=100
+parameters=[i for i in np.arange(smallest_number_of_intervals, max_nb_of_intervals+1,step=10)] # the range of the number of intervals we want to consider
+
+number_of_column=4 # the number of columns in the plot
+figure, axis = plt.subplots(nrows=math.ceil(len(parameters)/number_of_column),ncols=number_of_column,gridspec_kw={'wspace': 0.4})
+#figure.tight_layout()
+grid_indices=[1+i for i in range(math.ceil(len(parameters)/number_of_column)*number_of_column)]
+#print(grid_indices)
+#print(parameters)
+#print(axis.flatten())
+error_unif_values=[]
+for i in range(1, max_nb_of_trapez+1):
+        error_unif_values.append(error_unif(x_0,x_1,i))
+for par, ax in zip(parameters, axis.flatten()[:len(parameters)]):
+    error_refin_values=[] 
+    for i in range(par, max_nb_of_trapez+1):
+        error_refin_values.append(error_refined(x_0,x_1,i,par))
+    ax.plot([i for i in range(par, max_nb_of_trapez+1)],error_refin_values, 'k', label='Refined',linewidth=2)
+    ax.plot([i for i in range(par, max_nb_of_trapez+1)],error_unif_values[par-1:], 'r', label='Uniform', dashes=[5, 3], alpha=0.8)
+    ax.set_title("$k=$"+str(par),fontsize=30)
+    #ax.legend(loc="upper right", fontsize=7)
+    ax.axvline(x = par, color = 'g',linestyle='dashed')
+    extraticks=[par,par+math.floor((max_nb_of_trapez-(par))/2),max_nb_of_trapez]
+    ax.set_xticks(extraticks)
+    ax.set_xlim(par-2, max_nb_of_trapez+1)
+    #ax.set_xlabel("Number of trapezoids")
+    #ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(6))
+    ax.set_aspect(len(error_refin_values)/max([max(error_refin_values),max(error_unif_values[par-1:])]))
+    ax.tick_params(axis='both', which='major', labelsize=30)
+    
+for i in range(len(grid_indices)-len(parameters)):
+    axis.flatten()[-1-i].set_visible(False) 
+figure.subplots_adjust(top=0.83)
+#figure.suptitle("Relative error to the real value (in %) as a function of the number of \n collocation points for various numbers of intervals. \n f(x)={}, [x0,x1]={} and real_integral={}".format(get_return_statement(f), [x_0,x_1],round(real_integral_t, 6)), fontsize=20)
+plt.show()
+
+
+
+
+
