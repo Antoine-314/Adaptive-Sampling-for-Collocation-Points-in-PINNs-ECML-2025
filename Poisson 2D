@@ -999,9 +999,6 @@ plt.show()
 
 
 
-##################################################################################REPRENDRE ICI################################################################################
-
-
 # RUN THE THREE NEURAL NETWORKS
 learning_rate=1e-3
 epochs=20000
@@ -1510,7 +1507,7 @@ ax6=plt.subplot(gs[1,0])
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[0::100], L2_error_unif[0::100], alpha=0.8,c='b',label='unif-RAD, t={} s'.format(time_unif)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_grid), len(L2_error_grid))[0::100], L2_error_grid[0::100], alpha=0.8,c='k',label='grid-RAD, t={} s'.format(time_grid)) # prediction of the PINN neural network
 #plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100], L2_error_rar[0::100], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
-plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD, t={} s".format(time_zero)) # prediction of the PINN neural network      on utilise time_zero=772.1 pour le graphe car le calcul de Volodimir a planté
+plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD, t={} s".format(time_zero)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[0::100], L2_error_prime[0::100], alpha=0.8,c='r',label="grad-RAD, t={} s".format(time_prime)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_second), len(L2_error_second))[0::100], L2_error_second[0::100], alpha=0.8,c='g',label="hessian-RAD, t={} s".format(time_second)) # prediction of the PINN neural network
 #plt.ylabel('Temperature (°C)')
@@ -1525,8 +1522,4 @@ fig.subplots_adjust(top=0.8)
 
 fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c={}, resample_period={}'.format(learning_rate, number_of_points, epochs, kappa, c, resample_period), fontsize=20, y=0.9)
 plt.show()
-
-
-
-
 
