@@ -1,1 +1,1 @@
-This repository contains the codes for the computations found in the paper "Provably Accurate Adaptive Sampling for Collocation Points in Physics-informed Neural Networks" accepted at ECML 2025.
+This repository contains the codes for the computations found in the paper \href{https://arxiv.org/abs/2504.00910}{Provably Accurate Adaptive Sampling for Collocation Points in Physics-informed Neural Networks} accepted at ECML 2025.
