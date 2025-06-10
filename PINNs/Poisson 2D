@@ -14,7 +14,6 @@ from numpy import sqrt, sin, cos, pi
 import matplotlib.gridspec as gridspec
 import time
 import copy
-import pickle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 torch.manual_seed(42)
@@ -884,36 +883,16 @@ analytical_pred_matrix = np.array([analytical_solution_x_y(x,y) for x in x_domai
 
 
 
-start_grid = time.time()
-net_grid = Net(input_dim=2,output_dim=1)
-losses_grid, stored_collocations_points_grid, L2_error_grid=fit_grid(model=net_grid, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs)
-end_grid = time.time()
-
-time_grid = round(end_grid - start_grid,1)
-
-pinn_preds_grid = predict(net_grid, x_domain,y_domain)
-pinn_preds_grid_matrix=np.zeros((len(x_domain), len(y_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(y_domain)):
-        pinn_preds_grid_matrix[i][j]=(pinn_preds_grid[i*(len(y_domain))+j].item())
-
-difference_matrix_grid=np.abs(analytical_pred_matrix-pinn_preds_grid_matrix)
-
-
-
 start_unif = time.time()
 net_unif = Net(input_dim=2,output_dim=1)
 losses_unif, stored_collocations_points_unif, L2_error_unif=fit_unif(model=net_unif, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, resample_period=resample_period)
 end_unif = time.time()
-
 time_unif = round(end_unif - start_unif,1)
-
 pinn_preds_unif = predict(net_unif, x_domain,y_domain)
 pinn_preds_unif_matrix=np.zeros((len(x_domain), len(y_domain)))
 for i in range(len(x_domain)):
     for j in range(len(y_domain)):
         pinn_preds_unif_matrix[i][j]=(pinn_preds_unif[i*(len(y_domain))+j].item())
-
 difference_matrix_unif=np.abs(analytical_pred_matrix-pinn_preds_unif_matrix)
 
 
@@ -922,15 +901,12 @@ start_zero = time.time()
 net_zero = Net(input_dim=2,output_dim=1)
 losses_zero, stored_collocations_points_zero, L2_error_zero=fit_adapt_zero(model=net_zero, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_zero = time.time()
-
 time_zero = round(end_zero - start_zero,1)
-
 pinn_preds_zero = predict(net_zero, x_domain,y_domain)
 pinn_preds_zero_matrix=np.zeros((len(x_domain), len(y_domain)))
 for i in range(len(x_domain)):
     for j in range(len(y_domain)):
         pinn_preds_zero_matrix[i][j]=(pinn_preds_zero[i*(len(y_domain))+j].item())
-
 difference_matrix_zero=np.abs(analytical_pred_matrix-pinn_preds_zero_matrix)
 
 
@@ -939,15 +915,12 @@ start_prime = time.time()
 net_prime = Net(input_dim=2,output_dim=1)
 losses_prime, stored_collocations_points_prime, L2_error_prime=fit_adapt_prime(model=net_prime, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_prime = time.time()
-
 time_prime = round(end_prime - start_prime,1)
-
 pinn_preds_prime = predict(net_prime, x_domain,y_domain)
 pinn_preds_prime_matrix=np.zeros((len(x_domain), len(y_domain)))
 for i in range(len(x_domain)):
     for j in range(len(y_domain)):
         pinn_preds_prime_matrix[i][j]=(pinn_preds_prime[i*(len(y_domain))+j].item())
-
 difference_matrix_prime=np.abs(analytical_pred_matrix-pinn_preds_prime_matrix)
 
 
@@ -956,15 +929,12 @@ start_second = time.time()
 net_second = Net(input_dim=2,output_dim=1)
 losses_second, stored_collocations_points_second, L2_error_second=fit_adapt_second(model=net_second, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_second = time.time()
-
 time_second = round(end_second - start_second,1)
-
 pinn_preds_second = predict(net_second, x_domain,y_domain)
 pinn_preds_second_matrix=np.zeros((len(x_domain), len(y_domain)))
 for i in range(len(x_domain)):
     for j in range(len(y_domain)):
         pinn_preds_second_matrix[i][j]=(pinn_preds_second[i*(len(y_domain))+j].item())
-
 difference_matrix_second=np.abs(analytical_pred_matrix-pinn_preds_second_matrix)
 
 
