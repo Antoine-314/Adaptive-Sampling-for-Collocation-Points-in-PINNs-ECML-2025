@@ -1012,7 +1012,7 @@ y_domain=np.linspace(0, 1, 100)
 analytical_pred_matrix = np.array([analytical_solution_x_y(x,y) for x in x_domain for y in y_domain]).reshape(len(x_domain),len(y_domain))
 
 
-"""
+
 start_grid = time.time()
 net_grid = Net(input_dim=2,output_dim=1)
 losses_grid, stored_collocations_points_grid, L2_error_grid=fit_grid(model=net_grid, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs)
@@ -1028,32 +1028,8 @@ for i in range(len(x_domain)):
 
 difference_matrix_grid=np.abs(analytical_pred_matrix-pinn_preds_grid_matrix)
 
-max_value_diff_grid=np.max([np.max(l) for l in difference_matrix_grid])
-min_value_diff_grid=np.min([np.min(l) for l in difference_matrix_grid])
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_grid_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_grid_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_grid, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_grid+[time_grid], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_grid, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_grid, file)
-"""
 
-"""
 start_unif = time.time()
 net_unif = Net(input_dim=2,output_dim=1)
 losses_unif, stored_collocations_points_unif, L2_error_unif=fit_unif(model=net_unif, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, resample_period=resample_period)
@@ -1069,34 +1045,8 @@ for i in range(len(x_domain)):
 
 difference_matrix_unif=np.abs(analytical_pred_matrix-pinn_preds_unif_matrix)
 
-max_value_diff_unif=np.max([np.max(l) for l in difference_matrix_unif])
-min_value_diff_unif=np.min([np.min(l) for l in difference_matrix_unif])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_unif_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_unif_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_unif, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_unif+[time_unif], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_unif, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_unif, file)
-"""
 
 
-
-"""
 start_zero = time.time()
 net_zero = Net(input_dim=2,output_dim=1)
 losses_zero, stored_collocations_points_zero, L2_error_zero=fit_adapt_zero(model=net_zero, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
@@ -1112,35 +1062,8 @@ for i in range(len(x_domain)):
 
 difference_matrix_zero=np.abs(analytical_pred_matrix-pinn_preds_zero_matrix)
 
-max_value_diff_zero=np.max([np.max(l) for l in difference_matrix_zero])
-min_value_diff_zero=np.min([np.min(l) for l in difference_matrix_zero])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_zero_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_zero_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_zero, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_zero+[time_zero], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_zero, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_zero, file) 
- """
 
 
-
-
-"""
 start_prime = time.time()
 net_prime = Net(input_dim=2,output_dim=1)
 losses_prime, stored_collocations_points_prime, L2_error_prime=fit_adapt_prime(model=net_prime, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
@@ -1156,33 +1079,8 @@ for i in range(len(x_domain)):
 
 difference_matrix_prime=np.abs(analytical_pred_matrix-pinn_preds_prime_matrix)
 
-max_value_diff_prime=np.max([np.max(l) for l in difference_matrix_prime])
-min_value_diff_prime=np.min([np.min(l) for l in difference_matrix_prime])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_prime_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_prime_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_prime, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_prime+[time_prime], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_prime, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_prime, file) 
- """
 
 
-"""
 start_second = time.time()
 net_second = Net(input_dim=2,output_dim=1)
 losses_second, stored_collocations_points_second, L2_error_second=fit_adapt_second(model=net_second, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
@@ -1198,132 +1096,6 @@ for i in range(len(x_domain)):
 
 difference_matrix_second=np.abs(analytical_pred_matrix-pinn_preds_second_matrix)
 
-max_value_diff_second=np.max([np.max(l) for l in difference_matrix_second])
-min_value_diff_second=np.min([np.min(l) for l in difference_matrix_second])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_second_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_second_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_second, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_second+[time_second], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_second, file)
-"""
-
-
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_grid= pickle.load(file)
-losses_grid = info_grid[:-1]
-time_grid=info_grid[-1]
-#print(losses_grid, time_grid)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_grid_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_grid_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_grid = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_unif= pickle.load(file)
-losses_unif = info_unif[:-1]
-time_unif=info_unif[-1]
-#print(losses_unif, time_unif)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_unif_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_unif_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_unif = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_zero= pickle.load(file)
-losses_zero = info_zero[:-1]
-time_zero=info_zero[-1]
-#print(losses_zero, time_zero)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_zero_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_zero_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_zero = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_prime= pickle.load(file)
-losses_prime = info_prime[:-1]
-time_prime=info_prime[-1]
-#print(losses_prime, time_prime)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_prime_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_prime_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_prime = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/info_second.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_second= pickle.load(file)
-losses_second = info_second[:-1]
-time_second=info_second[-1]
-#print(losses_second, time_second)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/pinn_preds_second_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_second_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/difference_matrix_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/L2_error_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Poisson 2D/Without seeds/Pickle files/stored_collocations_points_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_second = pickle.load(file) 
 
 
 
@@ -1332,6 +1104,13 @@ print('The L2 error of unif-RAD is : {}'.format(np.mean(difference_matrix_unif.r
 print('The L2 error of res-RAD is : {}'.format(np.mean(difference_matrix_zero.reshape(1,-1)[0]**2)))
 print('The L2 error of grad-RAD is : {}'.format(np.mean(difference_matrix_prime.reshape(1,-1)[0]**2)))
 print('The L2 error of hessian-RAD is : {}'.format(np.mean(difference_matrix_second.reshape(1,-1)[0]**2)))
+
+
+
+
+
+
+
 
 #PLOT THE OUTPUT OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
 
