@@ -22,8 +22,6 @@ np.random.seed(10)
 
 
 
-
-
 # DEFINE THE GROUND TRUTH FUNCTION
 a=10
 def analytical_solution(Z:np.array):
