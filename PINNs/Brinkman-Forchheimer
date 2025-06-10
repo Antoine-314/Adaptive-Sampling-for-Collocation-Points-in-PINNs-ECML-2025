@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import math
 import copy
-import pickle
 import time
 import matplotlib.gridspec as gridspec
 
@@ -646,7 +645,6 @@ start_unif = time.time()
 net_unif = Net(input_dim=1,output_dim=1)
 losses_unif, L2_error_unif, Standard_dev_unif, last_prediction_unif=fit_unif(model=net_unif, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_eval_pts=number_of_points, resample_period=resample_period)
 end_unif = time.time()
-
 time_unif = round(end_unif - start_unif,1)
 pinn_preds_unif = predict(net_unif, domain_points)
 difference_unif=np.abs(np.subtract(pinn_preds_unif.reshape(1,-1)[0],analytical_pred))
