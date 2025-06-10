@@ -144,135 +144,6 @@ def physics_loss_mean(model: torch.nn.Module, evaluation_points: torch.Tensor): 
    
 
 
-# DEFINE THE TRAINING PROCEDURE FOR THE GRID-RAD
-def fit_grid(model: torch.nn.Module, x_domain, y_domain, number_of_points, learning_rate, epochs): # this defines the training phase of the network
-    domain_points=make_grid(x_domain,y_domain)
-    domain_tensor=np_to_th(domain_points)
-    evaluation_points=make_grid(np.linspace(x_domain[0],x_domain[-1],np.sqrt(number_of_points).astype(int)),np.linspace(y_domain[0],y_domain[-1],np.sqrt(number_of_points).astype(int)))
-    evaluation_points_tensor=np_to_th(evaluation_points)
-
-    model_2=copy.deepcopy(model)
-
-
-    optimiser = optim.Adam(model.parameters(), lr=learning_rate)
-
-    model.train() # model.train() tells your model that you are training the model. This helps inform layers such as Dropout and BatchNorm, which are designed to behave differently during training and evaluation. For instance, in training mode, BatchNorm updates a moving average on each new batch; whereas, for evaluation mode, these updates are frozen.
-    
-    losses_total = []
-    L2_error=[]
-    Standard_dev=[]
-    for ep in range(1,epochs+1):
-        model_2.load_state_dict(model.state_dict())
-        model_2.zero_grad(set_to_none=True)
-        L2_error.append(torch.mean((model_2(domain_tensor)-np_to_th(np.array([analytical_solution(Z) for Z in domain_points])))**2).item())
-        Standard_dev.append(torch.std((model_2(domain_tensor)-np_to_th(np.array([analytical_solution(Z) for Z in domain_points])))**2).item())
-        losses_total.append(physics_loss_mean(model_2, domain_tensor).item()) # save the loss value on the whole domain
-
-        optimiser.zero_grad() # Sets gradients of all model parameters to zero because PyTorch accumulates the gradients on subsequent backward passes
-        loss = physics_loss_mean(model, evaluation_points_tensor) # compute the loss on the evaluation points
-        loss.backward() # Compute gradient of the loss w.r.t. to the parameters 
-        optimiser.step() # Modify the parameters of the model by subtracting the gradient 
-
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses[-1]:.8f}") # print the loss every epochs/10 epochs
-        """
-    return losses_total, evaluation_points, L2_error, Standard_dev
-
-
-
-
-"""
-# RUN THE NEURAL NETWORK WITH GRID-RAD
-learning_rate=1e-3
-epochs=20000
-number_of_points=400
-x_domain=np.linspace(0, 1, 100)
-y_domain=np.linspace(0, 1, 100)
-
-net_grid = Net(input_dim=2,output_dim=1)
-start_grid = time.time()
-losses_grid,eval_points_grid,L2_error_grid,Standard_dev_grid=fit_grid(model=net_grid, x_domain=x_domain, y_domain=y_domain, number_of_points=number_of_points,learning_rate=learning_rate, epochs=epochs)
-end_grid = time.time()
-time_grid = round(end_grid - start_grid,1)
-#print("It took", time_grid, "seconds")
-
-pinn_preds_grid = predict(net_grid, x_domain,y_domain)
-
-pinn_preds_grid_matrix=np.zeros((len(x_domain), len(y_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(y_domain)):
-        pinn_preds_grid_matrix[i][j]=(pinn_preds_grid[i*(len(y_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_y(x,y) for x in x_domain for y in y_domain]).reshape(len(x_domain),len(y_domain))
-
-difference_matrix_grid=np.abs(analytical_pred_matrix-pinn_preds_grid_matrix)
-
-max_value_diff_grid=np.max([np.max(l) for l in difference_matrix_grid])
-min_value_diff_grid=np.min([np.min(l) for l in difference_matrix_grid])
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_grid), len(losses_grid)),losses_grid,c='orange',label='Loss of the PINN with grid-RAD') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with grid-RAD. t={} s. \n  learning_rate={}, nb points={}'.format(time_grid,epochs,learning_rate,number_of_points))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('y')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_grid_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('y')
-plt.title('Output of the PINN after {} epochs with grid-RAD. \n  learning_rate={}, nb points={}'.format(epochs,learning_rate,number_of_points))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-plt.figure()
-
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_grid), len(L2_error_grid)),L2_error_grid,c='orange',label='$L_2$-error of the PINN with grid-RAD') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with grid-RAD. \n  nb points={}'.format(epochs,learning_rate,number_of_points))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_grid.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_grid, vmax = max_value_diff_grid)
-ax1.set_xlabel('x')
-ax1.set_ylabel('y')
-plt.title('Absolute error between the grid-RAD PINN and the analytical solution after {} epochs. \n learning_rate={}, nb points={}'.format(epochs, learning_rate, number_of_points))
-plt.colorbar(im2, ax=ax2) 
-plt.figure()
-
-plt.show()
-
-# PLOT THE EVALUATION POINTS
-x_eval=[z[0] for z in eval_points_grid]
-y_eval=[z[1] for z in eval_points_grid]
-plt.scatter(x_eval,y_eval)
-plt.xlabel('t')
-plt.ylabel('x')
-plt.title('Last sample points used for the training phase. \n nb conformal points ={}'.format(number_of_points))
-plt.show()
-"""
-
 
 
 # DEFINE THE TRAINING PROCEDURE FOR THE RANDOM UNIFORM METHOD
@@ -1097,9 +968,6 @@ for i in range(len(x_domain)):
 difference_matrix_second=np.abs(analytical_pred_matrix-pinn_preds_second_matrix)
 
 
-
-
-
 print('The L2 error of unif-RAD is : {}'.format(np.mean(difference_matrix_unif.reshape(1,-1)[0]**2)))
 print('The L2 error of res-RAD is : {}'.format(np.mean(difference_matrix_zero.reshape(1,-1)[0]**2)))
 print('The L2 error of grad-RAD is : {}'.format(np.mean(difference_matrix_prime.reshape(1,-1)[0]**2)))
@@ -1112,10 +980,7 @@ print('The L2 error of hessian-RAD is : {}'.format(np.mean(difference_matrix_sec
 
 
 
-#PLOT THE OUTPUT OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
-
-max_value_grid=np.max([np.max(l) for l in pinn_preds_grid_matrix])
-min_value_grid=np.min([np.min(l) for l in pinn_preds_grid_matrix])
+#PLOT THE L2 ERROR AND THE HEAT MAP FOR EACH METHOD
 
 max_value_unif=np.max([np.max(l) for l in pinn_preds_unif_matrix])
 min_value_unif=np.min([np.min(l) for l in pinn_preds_unif_matrix])
@@ -1129,87 +994,11 @@ min_value_prime=np.min([np.min(l) for l in pinn_preds_prime_matrix])
 max_value_second=np.max([np.max(l) for l in pinn_preds_second_matrix])
 min_value_second=np.min([np.min(l) for l in pinn_preds_second_matrix])
 
-min_output=min([min_value_grid, min_value_unif, min_value_zero, min_value_prime, min_value_second])
-max_output=max([max_value_grid, max_value_unif, max_value_zero, max_value_prime, min_value_second])
+min_output=min([min_value_unif, min_value_zero, min_value_prime, min_value_second])
+max_output=max([max_value_unif, max_value_zero, max_value_prime, min_value_second])
 
 
 
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 3)
-
-ax5=plt.subplot(gs[0,0])
-im5=ax5.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax5.set_xlabel('x')
-ax5.set_ylabel('y')
-plt.title('Analytical solution')
-#plt.colorbar(im1, ax=ax1) 
-divider = make_axes_locatable(ax5)
-cax5 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im5, cax = cax5)
-
-ax0=plt.subplot(gs[0,1])
-im0=ax0.imshow(pinn_preds_grid_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax0.set_xlabel('x')
-ax0.set_ylabel('y')
-plt.title('Output of grid-RAD')
-#plt.colorbar(im0, ax=ax0) 
-divider = make_axes_locatable(ax0)
-cax0 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im0, cax = cax0)
-
-ax1=plt.subplot(gs[0,2])
-im1=ax1.imshow(pinn_preds_unif_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax1.set_xlabel('x')
-ax1.set_ylabel('y')
-plt.title('Output of unif-RAD')
-#plt.colorbar(im1, ax=ax1) 
-divider = make_axes_locatable(ax1)
-cax1 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im1, cax = cax1)
-
-ax2=plt.subplot(gs[1,0])
-im2=ax2.imshow(pinn_preds_zero_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax2.set_xlabel('x')
-ax2.set_ylabel('y')
-plt.title('Output of res-RAD')
-#plt.colorbar(im2, ax=ax2)
-divider = make_axes_locatable(ax2)
-cax2 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im2, cax = cax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_prime_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax3.set_xlabel('x')
-ax3.set_ylabel('y')
-plt.title('Output of grad-RAD')
-#plt.colorbar(im3, ax=ax3)
-divider = make_axes_locatable(ax3)
-cax3 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im3, cax = cax3)
-
-ax4=plt.subplot(gs[1,2])
-im4=ax4.imshow(pinn_preds_second_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
-ax4.set_xlabel('x')
-ax4.set_ylabel('y')
-plt.title('Output of hessian-RAD')
-#plt.colorbar(im4, ax=ax4)
-divider = make_axes_locatable(ax4)
-cax4 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im4, cax = cax4) 
-
-plt.subplots_adjust(wspace = 0.3)
-plt.subplots_adjust(hspace = 0.3)
-fig.subplots_adjust(top=0.8)
-
-fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c={}, resample_period={}'.format(learning_rate, number_of_points, epochs, kappa, c, resample_period), fontsize=20, y=0.9)
-
-
-
-
-#PLOT THE L2 ERROR OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
-
-max_value_diff_grid=np.max([np.max(l) for l in difference_matrix_grid])
-min_value_diff_grid=np.min([np.min(l) for l in difference_matrix_grid])
 
 max_value_diff_unif=np.max([np.max(l) for l in difference_matrix_unif])
 min_value_diff_unif=np.min([np.min(l) for l in difference_matrix_unif])
@@ -1223,8 +1012,8 @@ min_value_diff_prime=np.min([np.min(l) for l in difference_matrix_prime])
 max_value_diff_second=np.max([np.max(l) for l in difference_matrix_second])
 min_value_diff_second=np.min([np.min(l) for l in difference_matrix_second])
 
-min_heatmap=min([min_value_diff_grid, min_value_diff_unif, min_value_diff_zero, min_value_diff_prime, min_value_diff_second])
-max_heatmap=max([max_value_diff_grid, max_value_diff_unif, max_value_diff_zero, max_value_diff_prime, min_value_diff_second])
+min_heatmap=min([min_value_diff_unif, min_value_diff_zero, min_value_diff_prime, min_value_diff_second])
+max_heatmap=max([ max_value_diff_unif, max_value_diff_zero, max_value_diff_prime, min_value_diff_second])
 
 
 
@@ -1232,21 +1021,19 @@ fig = plt.figure()
 gs = gridspec.GridSpec(2, 3)
 
 ax5=plt.subplot(gs[0,0])
-im5=ax5.imshow(difference_matrix_grid.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='plasma', vmin=min_heatmap, vmax=max_heatmap)
+im5=ax5.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='viridis', vmin=min_output, vmax=max_output)
 ax5.set_xlabel('x')
 ax5.set_ylabel('y')
-plt.title('Absolute error of grid-RAD')
-#plt.colorbar(im5, ax=ax5)
+plt.title('Analytical solution')
 divider = make_axes_locatable(ax5)
 cax5 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im5, cax = cax5) 
+cbar = plt.colorbar(im5, cax = cax5)
 
 ax1=plt.subplot(gs[0,1])
 im1=ax1.imshow(difference_matrix_unif.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),y_domain[0]-(y_domain[-1]-y_domain[0])/(2*len(y_domain)),y_domain[-1]+(y_domain[-1]-y_domain[0])/(2*len(y_domain))],aspect='equal',cmap='plasma', vmin=min_heatmap, vmax=max_heatmap)
 ax1.set_xlabel('x')
 ax1.set_ylabel('y')
 plt.title('Absolute error of unif-RAD')
-#plt.colorbar(im1, ax=ax1) 
 divider = make_axes_locatable(ax1)
 cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cbar = plt.colorbar(im1, cax = cax1)
@@ -1257,7 +1044,6 @@ im2=ax2.imshow(difference_matrix_zero.transpose(),origin='lower',extent=[x_domai
 ax2.set_xlabel('x')
 ax2.set_ylabel('y')
 plt.title('Absolute error of res-RAD')
-#plt.colorbar(im2, ax=ax2)
 divider = make_axes_locatable(ax2)
 cax2 = divider.append_axes("right", size="5%", pad=0.1)
 cbar = plt.colorbar(im2, cax = cax2) 
@@ -1267,7 +1053,6 @@ im3=ax3.imshow(difference_matrix_prime.transpose(),origin='lower',extent=[x_doma
 ax3.set_xlabel('x')
 ax3.set_ylabel('y')
 plt.title('Absolute error of grad-RAD')
-#plt.colorbar(im3, ax=ax3)
 divider = make_axes_locatable(ax3)
 cax3 = divider.append_axes("right", size="5%", pad=0.1)
 cbar = plt.colorbar(im3, cax = cax3)
@@ -1277,19 +1062,15 @@ im4=ax4.imshow(difference_matrix_second.transpose(),origin='lower',extent=[x_dom
 ax4.set_xlabel('x')
 ax4.set_ylabel('y')
 plt.title('Absolute error of hessian-RAD')
-#plt.colorbar(im4, ax=ax4)
 divider = make_axes_locatable(ax4)
 cax4 = divider.append_axes("right", size="5%", pad=0.1)
 cbar = plt.colorbar(im3, cax = cax4) 
 
 ax6=plt.subplot(gs[1,0])
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[0::100], L2_error_unif[0::100], alpha=0.8,c='b',label='unif-RAD, t={} s'.format(time_unif)) # prediction of the PINN neural network
-plt.plot(np.linspace(1, len(L2_error_grid), len(L2_error_grid))[0::100], L2_error_grid[0::100], alpha=0.8,c='k',label='grid-RAD, t={} s'.format(time_grid)) # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100], L2_error_rar[0::100], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD, t={} s".format(time_zero)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[0::100], L2_error_prime[0::100], alpha=0.8,c='r',label="grad-RAD, t={} s".format(time_prime)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_second), len(L2_error_second))[0::100], L2_error_second[0::100], alpha=0.8,c='g',label="hessian-RAD, t={} s".format(time_second)) # prediction of the PINN neural network
-#plt.ylabel('Temperature (°C)')
 plt.xlabel('Epochs')
 plt.legend(loc="upper right", prop={'size': 13.8})
 ax6.set_box_aspect(1)
