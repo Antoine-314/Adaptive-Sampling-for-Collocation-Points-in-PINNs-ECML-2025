@@ -109,101 +109,7 @@ def physics_loss_mean(model: torch.nn.Module, evaluation_points: torch.Tensor): 
 
 
 
-# DEFINE THE TRAINING PROCEDURE FOR GRID-RAD
-def fit_grid(model: torch.nn.Module, domain_points, learning_rate, epochs, number_of_eval_pts): # this defines the training phase of the network
-    
-    domain_points_tensor=np_to_th(domain_points)
-    evaluation_points_tensor=np_to_th(np.linspace(domain_points[0],domain_points[-1],number_of_eval_pts))
-    model_2=copy.deepcopy(model)
 
-    optimiser = optim.Adam(model.parameters(), lr=learning_rate)
-
-    model.train() # model.train() tells your model that you are training the model. This helps inform layers such as Dropout and BatchNorm, which are designed to behave differently during training and evaluation. For instance, in training mode, BatchNorm updates a moving average on each new batch; whereas, for evaluation mode, these updates are frozen.
-        
-    loss_total = []
-    L2_error=[]
-    Standard_dev=[]
-    for ep in range(1,epochs+1):
-        if ep==epochs:
-                last_prediction=predict(model, domain_points)
-
-        model_2.load_state_dict(model.state_dict())
-        model_2.zero_grad(set_to_none=True)
-        L2_error.append(torch.mean((model_2(domain_points_tensor)-np_to_th(analytical_solution(domain_points)))**2).item())
-        Standard_dev.append(torch.std((model_2(domain_points_tensor)-np_to_th(analytical_solution(domain_points)))**2).item())
-        loss_total.append(physics_loss_mean(model_2, domain_points_tensor).item()) # save the total loss value
-        
-
-        optimiser.zero_grad() # Sets gradients of all model parameters to zero because PyTorch accumulates the gradients on subsequent backward passes
-        loss= physics_loss_mean(model, evaluation_points_tensor) # compute the loss on the evaluation points
-        loss.backward() # Compute gradient of the loss w.r.t. to the parameters 
-        optimiser.step() # Modify the parameters of the model by subtracting the gradient 
-
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses[-1]:.8f}") # print the loss every epochs/10 epochs  """
-    return loss_total, L2_error, Standard_dev, last_prediction
-
-
-
-"""
-# RUN THE NEURAL NETWORK WITH GRID-RAD
-learning_rate=1e-3
-epochs=30000
-number_of_points=30
-domain_points=np.linspace(0, 1, 100)
-
-net_grid = Net(input_dim=1,output_dim=1)
-start_grid = time.time()
-losses,L2_error_grid,Standard_dev_grid,last_prediction_grid=fit_grid(model=net_grid, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_eval_pts=number_of_points)
-#print(len(losses), len(L2_error_grid))
-end_grid = time.time()
-
-time_grid = round(end_grid - start_grid,1)
-
-pinn_preds_grid = predict(net_grid, domain_points)
-analytical_pred = np.array([analytical_solution(x) for x in domain_points])
-difference_grid=np.abs(np.subtract(pinn_preds_grid.reshape(1,-1)[0],analytical_pred))
-
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses), len(losses)),losses,c='orange',label='Error of the PINN with grid-RAD') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with grid-RAD. \n  learning_rate={}, number_of_points={}, time={} s'.format(learning_rate,number_of_points,time_grid))
-
-ax2=plt.subplot(gs[0,1])
-plt.plot(domain_points, analytical_pred, alpha=0.8,c='b',label='Analytical solution') # ground truth
-plt.plot(domain_points, pinn_preds_grid, alpha=0.8,c='orange',label='grid-RAD') # prediction of the PINN neural network
-plt.legend(labels=['Equation', 'PINN'])
-plt.ylabel('Temperature (°C)')
-plt.xlabel('Time (s)')
-plt.legend(loc="upper right")
-plt.title('Comparaison between the ground truth and the PINN with grid-RAD. \n  learning_rate={}, number_of_points={}, time={} s'.format(learning_rate,number_of_points,time_grid))
-
-ax3=plt.subplot(gs[1,1])
-plt.plot(np.linspace(1, len(losses), len(losses)), L2_error_grid,c='k') # ground truth
-plt.legend(labels=['$L_2$-error'])
-#plt.ylabel('Temperature (°C)')
-plt.xlabel('Time (s)')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error between the PINN output and the ground truth. \n learning_rate={}, number_of_points={}, time={} s'.format(learning_rate, number_of_points,time_grid))
-
-#ax3=plt.subplot(gs[1,1])
-#plt.plot(domain_points, difference_grid,c='k') # ground truth
-#plt.legend(labels=['Difference to ground truth'])
-#plt.ylabel('Temperature (°C)')
-#plt.xlabel('Time (s)')
-#plt.legend(loc="upper right")
-#plt.title('Absolute difference between the PINN output and the ground truth. \n learning_rate={}, number_of_points={}, time={} s, resample_period={}'.format(learning_rate, number_of_eval_pts,time_grid,resample_period))
-
-plt.subplots_adjust(hspace = .3)
-
-plt.show()
- """
 
 # DEFINE THE TRAINING PROCEDURE FOR UNIF-RAD
 def fit_unif(model: torch.nn.Module, domain_points, learning_rate, epochs, number_of_eval_pts,resample_period): # this defines the training phase of the network
@@ -323,109 +229,6 @@ def physics_loss_zero(model: torch.nn.Module, evaluation_points: torch.Tensor): 
 
 
 
-
-
-# DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH RAR (NOT GREEDY)
-def fit_adapt_rar(model: torch.nn.Module, domain_points, learning_rate, epochs, number_of_points, resample_period): # this defines the training phase of the network
-    domain_points_tensor=np_to_th(domain_points)
-    model_2=copy.deepcopy(model)
-
-    optimiser = optim.Adam(model.parameters(), lr=learning_rate)
-
-    model.train() # model.train() tells your model that you are training the model. This helps inform layers such as Dropout and BatchNorm, which are designed to behave differently during training and evaluation. For instance, in training mode, BatchNorm updates a moving average on each new batch; whereas, for evaluation mode, these updates are frozen.
-        
-    loss_total = []
-    L2_error=[]
-    
-    for ep in range(1,epochs+1):
-
-        optimiser.zero_grad() # Sets gradients of all model parameters to zero because PyTorch accumulates the gradients on subsequent backward passes
-            
-        # COMPUTE THE COLLOCATION POINTS
-        if ep==1 or ep % resample_period ==0: #CHANGING TOO OFTEN THE EVALUATION POINTS SLOWS DECREASES THE EFFICIENCY
-            optimiser.zero_grad()
-            total_points=np.random.uniform(low=domain_points[0],high=domain_points[-1], size=100*number_of_points)
-            values_of_residues=np.abs(physics_loss_zero(model, np_to_th(total_points)))
-            indices_of_highest_values= np.argpartition(values_of_residues, -number_of_points)[-number_of_points:]
-            collocation_points=total_points[indices_of_highest_values]
-
-            collocation_points_tensor=np_to_th(collocation_points)
-
-        if ep==epochs:
-                last_prediction=predict(model, domain_points)
-
-        model_2.load_state_dict(model.state_dict())
-        model_2.zero_grad(set_to_none=True)
-        L2_error.append(torch.mean((model_2(domain_points_tensor)-np_to_th(analytical_solution(domain_points)))**2).item())
-        loss_total.append(physics_loss_mean(model_2, domain_points_tensor).item()) # save the total loss value
-
-        optimiser.zero_grad()
-        loss_integral = physics_loss_mean(model, collocation_points_tensor) # compute the loss on the collocation points
-        loss_integral.backward() # Compute gradient of the loss w.r.t. to the parameters 
-        optimiser.step() # Modify the parameters by subtracting the gradient 
-       
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses[-1]:.8f}") # print the loss every epochs/10 epochs  """
-    return loss_total, L2_error, last_prediction
-
-
-"""
-# RUN THE NEURAL NETWORK WITH THE ADAPTATIVE SAMPLING WITH RAR (NOT GREEDY)
-learning_rate=1e-3
-epochs=50000
-number_of_points=30
-resample_period=1000
-domain_points=np.linspace(0, 1, 100)
-net_rar = Net(input_dim=1,output_dim=1)
-
-start_rar = time.time()
-losses_adapt_rar, L2_error_rar, last_prediction_rar=fit_adapt_rar(model=net_rar, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points,resample_period=resample_period)
-end_rar = time.time()
-
-time_rar = round(end_rar - start_rar,1)
-
-pinn_preds_rar = predict(net_rar, domain_points)
-analytical_pred = np.array([analytical_solution(x) for x in domain_points])
-difference_rar=np.abs(np.subtract(pinn_preds_rar.reshape(1,-1)[0],analytical_pred))
-
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_adapt_rar), len(losses_adapt_rar)),losses_adapt_rar, c='orange',label='Error with adaptative sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.title('Loss of the PINN with adaptative sampling with RAR. \n  learning_rate={}, number_of_points={}, time={} s, resampling period={}'.format(learning_rate, number_of_points, time_rar,resample_period))
-
-ax2=plt.subplot(gs[0,1])
-plt.plot(domain_points, analytical_pred, alpha=0.8,c='b',label='Analytical solution') # ground truth
-plt.plot(domain_points, pinn_preds_rar, alpha=0.8,c='orange',label='Sampling with RAR') # prediction of the PINN neural network
-plt.legend(labels=['Equation', 'PINN'])
-plt.ylabel('Temperature (°C)')
-plt.xlabel('Time (s)')
-plt.legend(loc="upper right")
-plt.title('Comparaison between the ground truth and the PINN output \n with adaptative sampling with RAR. \n learning_rate={}, number_of_points={}, time={} s, resampling period={}'.format(learning_rate, number_of_points, time_rar, resample_period))
-
-ax3=plt.subplot(gs[1,1])
-plt.plot(np.linspace(1, len(losses_adapt_rar),len(losses_adapt_rar)), L2_error_rar,c='k') # ground truth
-plt.legend(labels=['$L_2$-error'])
-#plt.ylabel('Temperature (°C)')
-plt.xlabel('Time (s)')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error between the PINN output with RAR and the ground truth. \n learning_rate={}, number_of_points={}, time={} s, resample_period={}'.format(learning_rate, number_of_points,time_rar,resample_period))
-
-#ax3=plt.subplot(gs[1,1])
-#plt.plot(domain_points, difference_prime,c='k') # ground truth
-#plt.legend(labels=['Equation', 'PINN'])
-#plt.ylabel('Temperature (°C)')
-#plt.xlabel('Time (s)')
-##plt.legend(loc="upper right")
-#plt.title('Absolute difference between the PINN output with $f^\prime$ and the ground truth. \n learning_rate={}, #number_of_points={}, k={}, c={}, time={} s, resampling period={}'.format(learning_rate, number_of_points, kappa, c, time_zero, resample_period))
-
-plt.subplots_adjust(hspace = .3)
-plt.show()
-"""
 
 
 
@@ -838,43 +641,7 @@ domain_points=np.linspace(0, 1, 1000)
 analytical_pred = np.array([analytical_solution(x) for x in domain_points])
 
 
-"""
-start_grid = time.time()
-net_grid = Net(input_dim=1,output_dim=1)
-losses_grid, L2_error_grid, Standard_dev_grid, last_prediction_grid=fit_grid(model=net_grid, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_eval_pts=number_of_points)
-end_grid = time.time()
 
-time_grid = round(end_grid - start_grid,1)
-pinn_preds_grid = predict(net_grid, domain_points)
-difference_grid=np.abs(np.subtract(pinn_preds_grid.reshape(1,-1)[0],analytical_pred))
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_grid, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_grid, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_grid+[time_grid], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_grid, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(Standard_dev_grid, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_grid.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_grid, file)
- """
-
-"""
 start_unif = time.time()
 net_unif = Net(input_dim=1,output_dim=1)
 losses_unif, L2_error_unif, Standard_dev_unif, last_prediction_unif=fit_unif(model=net_unif, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_eval_pts=number_of_points, resample_period=resample_period)
@@ -884,65 +651,7 @@ time_unif = round(end_unif - start_unif,1)
 pinn_preds_unif = predict(net_unif, domain_points)
 difference_unif=np.abs(np.subtract(pinn_preds_unif.reshape(1,-1)[0],analytical_pred))
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_unif, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_unif, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_unif+[time_unif], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_unif, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(Standard_dev_unif, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_unif, file)
- """
 
-
-"""
-start_rar = time.time()
-net_adapt_rar = Net(input_dim=1,output_dim=1)
-losses_rar,L2_error_rar,last_prediction_rar=fit_adapt_rar(model=net_adapt_rar, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, resample_period=resample_period)
-end_rar = time.time()
-time_rar = round(end_rar - start_rar,1)
-pinn_preds_adapt_rar = predict(net_adapt_rar, domain_points)
-difference_rar=np.abs(np.subtract(pinn_preds_adapt_rar.reshape(1,-1)[0],analytical_pred))
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_rar.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_adapt_rar, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_rar.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_rar, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_rar.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_rar+[time_rar], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_rar.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_rar, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_rar.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_rar, file)
- """ 
-
-"""
 start_zero = time.time()
 net_adapt_zero = Net(input_dim=1,output_dim=1)
 losses_zero, L2_error_zero, Standard_dev_zero, last_prediction_zero=fit_adapt_zero(model=net_adapt_zero, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
@@ -951,33 +660,7 @@ time_zero = round(end_zero - start_zero,1)
 pinn_preds_adapt_zero = predict(net_adapt_zero, domain_points)
 difference_zero=np.abs(np.subtract(pinn_preds_adapt_zero.reshape(1,-1)[0],analytical_pred))
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_adapt_zero, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_zero, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_zero+[time_zero], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_zero, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(Standard_dev_zero, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_zero, file)  
-"""
 
-"""
 start_prime = time.time()
 net_adapt_prime = Net(input_dim=1,output_dim=1)
 losses_prime, L2_error_prime, Standard_dev_prime, last_prediction_prime=fit_adapt_prime(model=net_adapt_prime, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
@@ -986,34 +669,7 @@ time_prime = round(end_prime - start_prime,1)
 pinn_preds_adapt_prime = predict(net_adapt_prime, domain_points)
 difference_prime=np.abs(np.subtract(pinn_preds_adapt_prime.reshape(1,-1)[0],analytical_pred))
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_adapt_prime, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_prime, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_prime+[time_prime], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_prime, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(Standard_dev_prime, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_prime, file) 
 
- """
-
-"""
 start_second = time.time()
 net_adapt_second = Net(input_dim=1,output_dim=1)
 losses_second, L2_error_second, Standard_dev_second, last_prediction_second, stored_collocation_points_second, stored_loss_function_second, stored_deriv_sec_loss_function_second=fit_adapt_second(model=net_adapt_second, domain_points=domain_points, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
@@ -1022,189 +678,6 @@ time_second = round(end_second - start_second,1)
 pinn_preds_adapt_second = predict(net_adapt_second, domain_points)
 difference_second=np.abs(np.subtract(pinn_preds_adapt_second.reshape(1,-1)[0],analytical_pred))
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_adapt_second, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_second, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_second+[time_second], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(Standard_dev_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(last_prediction_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_collocation_points_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocation_points_second, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_loss_function_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_loss_function_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_deriv_sec_loss_function_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_deriv_sec_loss_function_second, file)
- """
-
-
-
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_grid= pickle.load(file)
-losses_grid = info_grid[:-1]
-time_grid=info_grid[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    Standard_dev_grid = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_grid.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_grid = pickle.load(file) 
-#print(losses_grid, time_grid)
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_unif= pickle.load(file)
-losses_unif = info_unif[:-1]
-time_unif=info_unif[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    Standard_dev_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_unif = pickle.load(file) 
-#print(losses_unif, time_unif)
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_rar.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    info_rar= pickle.load(file)
-losses_rar = info_rar[:-1]
-time_rar=info_rar[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_rar.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_rar = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_rar.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_rar = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_rar.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_rar = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_rar.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_rar = pickle.load(file) 
-#print(losses_unif, time_unif)
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    info_zero= pickle.load(file)
-losses_zero = info_zero[:-1]
-time_zero=info_zero[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    Standard_dev_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_zero = pickle.load(file) 
-#print(losses_unif, time_unif)
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    info_prime= pickle.load(file)
-losses_prime = info_prime[:-1]
-time_prime=info_prime[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_adapt_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    Standard_dev_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_prime = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/info_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    info_second= pickle.load(file)
-losses_second = info_second[:-1]
-time_second=info_second[-1]
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/pinn_preds_adapt_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_adapt_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/difference_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/L2_error_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/Standard_dev_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    Standard_dev_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/last_prediction_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    last_prediction_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_collocation_points_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocation_points_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_loss_function_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_loss_function_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/1D/Brinkman-Forchheimer (1D)/Adaptative sampling with distribution and no seeds/Pickle files/stored_deriv_sec_loss_function_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_deriv_sec_loss_function_second = pickle.load(file) 
-    
 
 
 
@@ -1217,8 +690,6 @@ gs = gridspec.GridSpec(2, 2)
 
 ax1=plt.subplot(gs[0,:])
 plt.plot(domain_points, difference_unif, alpha=0.8,c='b',label="unif-RAD, t={} s".format(time_unif)) # prediction of the PINN neural network
-#plt.plot(domain_points, difference_grid, alpha=0.8,c='k',label="grid-RAD, t={} s".format(time_grid)) # prediction of the PINN neural network
-#plt.plot(domain_points, difference_rar, alpha=0.8,c='brown',label="Sampling with RAR") # prediction of the PINN neural 
 plt.plot(domain_points, difference_zero, alpha=0.8,c='orange',label="res-RAD, t={} s".format(time_zero))  # prediction of the PINN neural 
 plt.plot(domain_points, difference_prime, alpha=0.8,c='r',label="grad-RAD, t={} s".format(time_prime))  # prediction of the PINN neural network
 plt.plot(domain_points, difference_second, alpha=0.8,c='g',label="hessian-RAD, t={} s".format(time_second))  # prediction of the PINN neural network
@@ -1229,8 +700,6 @@ plt.title('Absolute differences between the ground truth and the PINN outputs af
 
 ax2=plt.subplot(gs[1,:])
 plt.plot(domain_points, np.abs(np.subtract(last_prediction_unif.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='b',label="unif-RAD, t={} s".format(time_unif))  # prediction of the PINN neural network
-#plt.plot(domain_points, np.abs(np.subtract(last_prediction_grid.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='k',label="grid-RAD, t={} s".format(time_grid))  # prediction of the PINN neural network
-#plt.plot(domain_points, np.abs(np.subtract(last_prediction_rar.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='brown',label="Sampling with RAR, t={} s".format(time_rar)) # prediction of the PINN neural 
 plt.plot(domain_points, np.abs(np.subtract(last_prediction_zero.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='orange',label="res-RAD, t={} s".format(time_zero))  # prediction of the PINN neural 
 plt.plot(domain_points, np.abs(np.subtract(last_prediction_prime.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='r',label="grad-RAD, t={} s".format(time_prime))  # prediction of the PINN neural network
 plt.plot(domain_points, np.abs(np.subtract(last_prediction_second.reshape(1,-1)[0],analytical_pred)), alpha=0.8,c='g',label="hessian-RAD, t={} s".format(time_second))  # prediction of the PINN neural network
@@ -1247,8 +716,6 @@ plt.show()
 
 
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[1000:7000][0::100], L2_error_unif[1000:7000][0::100], alpha=0.8,c='b',label='unif-RAD') # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_grid), len(L2_error_grid))[1000:7000][0::100], L2_error_grid[1000:7000][0::100], alpha=0.8,c='k',label='grid-RAD') # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100], L2_error_rar[0::100], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[1000:7000][0::100], L2_error_zero[1000:7000][0::100], alpha=0.8,c='orange',label="res-RAD") # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[1000:7000][0::100], L2_error_prime[1000:7000][0::100], alpha=0.8,c='r',label="grad-RAD") # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_second), len(L2_error_second))[1000:7000][0::100], L2_error_second[1000:7000][0::100], alpha=0.8,c='g',label="hessian-RAD") # prediction of the PINN neural network
@@ -1281,7 +748,6 @@ gs = gridspec.GridSpec(2, 2)
 
 ax1=plt.subplot(gs[0,:])
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[0::100], L2_error_unif[0::100], alpha=0.8,c='b',label='unif-RAD') # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100][0::200], L2_error_rar[0::100][0::200], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD") # prediction of the PINN neural network
 #plt.plot(np.append(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[29900:],30001), L2_error_prime[29900:]+[np.mean(difference_prime)], alpha=0.8,c='r',label="Adaptative sampling with $f^\prime$") # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[0::100], L2_error_prime[0::100], alpha=0.8,c='r',label="grad-RAD") # prediction of the PINN neural network
@@ -1293,7 +759,6 @@ plt.title('Mean of the $L_2$-error between the ground truth \n and the PINN outp
 
 ax2=plt.subplot(gs[1,:])
 plt.plot(np.linspace(1, len(Standard_dev_unif), len(Standard_dev_unif))[0::100], Standard_dev_unif[0::100], alpha=0.8,c='b',label='unif-RAD') # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100][0::200], L2_error_rar[0::100][0::200], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(Standard_dev_zero), len(Standard_dev_zero))[0::100], Standard_dev_zero[0::100], alpha=0.8,c='orange',label="res-RAD") # prediction of the PINN neural network
 #plt.plot(np.append(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[29900:],30001), L2_error_prime[29900:]+[np.mean(difference_prime)], alpha=0.8,c='r',label="Adaptative sampling with $f^\prime$") # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(Standard_dev_prime), len(Standard_dev_prime))[0::100], Standard_dev_prime[0::100], alpha=0.8,c='r',label="grad-RAD") # prediction of the PINN neural network
