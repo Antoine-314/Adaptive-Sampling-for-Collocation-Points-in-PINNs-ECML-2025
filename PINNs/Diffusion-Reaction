@@ -429,7 +429,7 @@ print('The L2 error of hessian-RAD is : {}'.format(np.mean(difference_matrix_sec
 
 
 
-#PLOT THE OUTPUT OF THE PINN FOR THE THREE METHODS
+#PLOT THE OUTPUT OF THE PINN FOR THE FOUR METHODS
 
 max_value_unif=np.max([np.max(l) for l in pinn_preds_unif_matrix])
 min_value_unif=np.min([np.min(l) for l in pinn_preds_unif_matrix])
@@ -499,7 +499,7 @@ fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c=
 
 
 
-#PLOT THE L2 ERROR OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
+#PLOT THE HEATMAPS FOR THE FOUR METHODS
 
 min_heatmap=min([min_value_diff_unif, min_value_diff_prime, min_value_diff_second])
 max_heatmap=max([max_value_diff_unif, max_value_diff_prime, min_value_diff_second])
@@ -571,6 +571,9 @@ plt.subplots_adjust(hspace = 0.6)
 #fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c={}, resample_period={}'.format(learning_rate, number_of_points, epochs, kappa, c, resample_period), fontsize=20, y=0.9)
 plt.figure()
 
+
+
+#PLOT THE L2 ERROR OF THE PINN FOR THE FOUR METHODS AND THE PINN OUTPUTS
 
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[0::100], L2_error_unif[0::100], alpha=0.8,c='b',label='unif-RAD, t={} s'.format(length_unif)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD, t={} s".format(length_zero)) # prediction of the PINN neural network
