@@ -14,7 +14,6 @@ from numpy import sqrt, sin, cos, pi
 import matplotlib.gridspec as gridspec
 import time
 import copy
-import pickle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 torch.manual_seed(42)
@@ -30,14 +29,11 @@ def initial_solution(x:np.array):
         S.append(np.sin(i*x)/i)
     return sum(S)+np.sin(8*x)/8
 
-
 def initial_solution_tensor(Z:torch.Tensor):
     S=[]
     for i in range(1,5):
         S.append(torch.sin(i*Z)/i)
     return sum(S)+torch.sin(8*Z)/8
-
-
 
 def analytical_solution(Z:np.array):
     return np.exp(-Z[1])*initial_solution(Z[0])
@@ -45,12 +41,8 @@ def analytical_solution(Z:np.array):
 def analytical_solution_x_t(x:np.array,t:np.array):
     return np.exp(-t)*initial_solution(x)
 
-
-
 def R(z:torch.Tensor):
     return torch.exp(-z[:,1].reshape(-1,1))*(3*torch.sin(2*z[:,0].reshape(-1,1))/2+8*torch.sin(3*z[:,0].reshape(-1,1))/3+15*torch.sin(4*z[:,0].reshape(-1,1))/4+63*torch.sin(8*z[:,0].reshape(-1,1))/8)
-
-
 
 
 # CREATE A FUNCTION TO TURN TWO LISTS INTO A GRID
@@ -64,8 +56,6 @@ def np_to_th(z:np.array):
     return torch.from_numpy(z).to(torch.float64).reshape(n_samples, -1).requires_grad_(True) # float64 is important to get enough precision when we use torch.sin(x) for x close to \pm pi
 
 
-
-
 # CONSTRUCT THE NEURAL NETWORK
 torch.set_default_dtype(torch.float64) # set the default torch tensor to be float64, needed for the precision mentioned in np_to_th
 class Net(nn.Module):
@@ -74,8 +64,8 @@ class Net(nn.Module):
         input_dim, # dimension of the input layer
         output_dim, # dimension of the output layer
         n_units=20, # number of neurones in each hidden layer
-    ) -> None: #   
-        super().__init__() #  
+    ) -> None:    
+        super().__init__()   
         self.n_units = n_units
         self.layers = nn.Sequential(
             nn.Linear(input_dim, self.n_units),
@@ -105,13 +95,7 @@ def predict(model, x,y): # predict on the fitted model
 
 # COMPUTE THE DERIVATIVE
 def grad(outputs: torch.Tensor, inputs: torch.Tensor): # Computes the partial derivative of an output with respect to an input
-    """
-    Args:
-        outputs: (N, 1) tensor
-        inputs: (N, D) tensor
-    """
     return torch.autograd.grad(outputs, inputs, grad_outputs=torch.ones_like(outputs), create_graph=True) 
-
 
 
 # DEFINE THE LOSS FUNCTION FOR THE PINN WITH MEAN SQUARE ERROR
@@ -119,15 +103,12 @@ def physics_loss_mean(model: torch.nn.Module, evaluation_points: torch.Tensor): 
     u = model(evaluation_points).squeeze() # we use squeeze because u.size()=torch.Size([10, 1]), but the derivative are torch.Size([10]), so the .squeeze() removes the column
     
     du_dt = grad(u, evaluation_points)[0][:,1]
-    
     d2u_dx2=grad(grad(u, evaluation_points)[0][:,0],evaluation_points)[0][:,0]
-
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
     
     return torch.mean(PDE**2)  # takes the mean of the square of the residue of the equation
 
    
-
 # DEFINE THE TRAINING PROCEDURE FOR THE RANDOM UNIFORM METHOD
 def fit_unif(model: torch.nn.Module, x_domain, t_domain, number_of_points, learning_rate, epochs, resample_period): # this defines the training phase of the network
     domain_points=make_grid(x_domain,t_domain)
@@ -160,10 +141,6 @@ def fit_unif(model: torch.nn.Module, x_domain, t_domain, number_of_points, learn
         loss.backward() # Compute gradient of the loss w.r.t. to the parameters 
         optimiser.step() # Modify the parameters of the model by subtracting the gradient 
 
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses[-1]:.8f}") # print the loss every epochs/10 epochs
-        """
     return losses_total, stored_collocations_points, L2_error
 
 
@@ -176,13 +153,10 @@ def physics_loss_zero(model: torch.nn.Module, evaluation_points: torch.Tensor): 
     u = model(evaluation_points).squeeze() # we use squeeze because u.size()=torch.Size([10, 1]), but the derivative are torch.Size([10]), so the .squeeze() removes the column
     
     du_dt = grad(u, evaluation_points)[0][:,1]
-    
     d2u_dx2=grad(grad(u, evaluation_points)[0][:,0],evaluation_points)[0][:,0]
-
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
 
     return (PDE**2).detach().numpy()
-
 
 
 # DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH THE ZERO DERIVATIVE
@@ -232,13 +206,8 @@ def fit_adapt_zero(model: torch.nn.Module, x_domain, t_domain, learning_rate, ep
         loss_value = physics_loss_mean(model, collocation_points_tensor) # compute the loss on the collocation points
         loss_value.backward() # Compute gradient of the loss w.r.t. to the parameters 
         optimiser.step() # Modify the parameters by subtracting the gradient 
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses_total[-1]:.8f}") # print the loss every epochs/10 epochs  
-        """
+        
     return losses_total,stored_collocations_points,L2_error
-
-
 
 
 
@@ -247,9 +216,7 @@ def deriv_physics_loss(model: torch.nn.Module, evaluation_points: torch.Tensor):
     u = model(evaluation_points).squeeze() # we use squeeze because u.size()=torch.Size([10, 1]), but the derivative are torch.Size([10]), so the .squeeze() removes the column
     
     du_dt = grad(u, evaluation_points)[0][:,1]
-    
     d2u_dx2=grad(grad(u, evaluation_points)[0][:,0],evaluation_points)[0][:,0]
-
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
     
     gradient_x=grad(torch.mean(PDE**2),evaluation_points)[0][:,0]
@@ -257,7 +224,6 @@ def deriv_physics_loss(model: torch.nn.Module, evaluation_points: torch.Tensor):
 
     return torch.sqrt(gradient_x**2+gradient_t**2).detach().numpy()
     
-
 
 # DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH THE FIRST DERIVATIVE
 def fit_adapt_prime(model: torch.nn.Module, x_domain, t_domain, learning_rate, epochs, number_of_points, kappa, c, resample_period): # this defines the training phase of the network
@@ -275,7 +241,6 @@ def fit_adapt_prime(model: torch.nn.Module, x_domain, t_domain, learning_rate, e
     L2_error=[]
     stored_collocations_points=[]
 
-    
     for ep in range(1,epochs+1):
         if ep==1:
             collocation_points = np.random.uniform(low=[x_domain[0],t_domain[0]], high=[x_domain[-1],t_domain[-1]], size=(number_of_points,2))
@@ -307,10 +272,7 @@ def fit_adapt_prime(model: torch.nn.Module, x_domain, t_domain, learning_rate, e
         loss_value = physics_loss_mean(model, collocation_points_tensor) # compute the loss on the collocation points
         loss_value.backward() # Compute gradient of the loss w.r.t. to the parameters 
         optimiser.step() # Modify the parameters by subtracting the gradient 
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses_total[-1]:.8f}") # print the loss every epochs/10 epochs  
-        """
+        
     return losses_total,stored_collocations_points,L2_error
     
 
@@ -320,9 +282,7 @@ def deriv_sec_physics_loss(model: torch.nn.Module, evaluation_points: torch.Tens
     u = model(evaluation_points).squeeze() # we use squeeze because u.size()=torch.Size([10, 1]), but the derivative are torch.Size([10]), so the .squeeze() removes the column
     
     du_dt = grad(u, evaluation_points)[0][:,1]
-    
     d2u_dx2=grad(grad(u, evaluation_points)[0][:,0],evaluation_points)[0][:,0]
-
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
 
     dPDE2_dx=grad(torch.mean(PDE**2),evaluation_points)[0][:,0]
@@ -383,10 +343,7 @@ def fit_adapt_second(model: torch.nn.Module, x_domain, t_domain, learning_rate, 
         loss_value = physics_loss_mean(model, collocation_points_tensor) # compute the loss on the collocation points
         loss_value.backward() # Compute gradient of the loss w.r.t. to the parameters 
         optimiser.step() # Modify the parameters by subtracting the gradient 
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses_total[-1]:.8f}") # print the loss every epochs/10 epochs  
-        """
+        
     return losses_total,stored_collocations_points,L2_error
     
 
@@ -394,10 +351,7 @@ def fit_adapt_second(model: torch.nn.Module, x_domain, t_domain, learning_rate, 
 
 
 
-
-
-
-# RUN THE THREE NEURAL NETWORKS
+# RUN THE FOUR NEURAL NETWORKS
 learning_rate=1e-4
 epochs=100000
 number_of_points=50
@@ -409,327 +363,62 @@ t_domain=np.linspace(0, 1, 100)
 
 analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
 
-""" 
+
 start_unif = time.time()
 net_unif = Net(input_dim=2,output_dim=1)
 losses_unif, stored_collocations_points_unif, L2_error_unif=fit_unif(model=net_unif, x_domain=x_domain, t_domain=t_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, resample_period=resample_period)
 end_unif = time.time()
-
 length_unif = round(end_unif - start_unif,1)
-
 pinn_preds_unif = predict(net_unif, x_domain,t_domain)
 pinn_preds_unif_matrix=np.zeros((len(x_domain), len(t_domain)))
 for i in range(len(x_domain)):
     for j in range(len(t_domain)):
         pinn_preds_unif_matrix[i][j]=(pinn_preds_unif[i*(len(t_domain))+j].item())
-
 difference_matrix_unif=np.abs(analytical_pred_matrix-pinn_preds_unif_matrix)
-
 max_value_diff_unif=np.max([np.max(l) for l in difference_matrix_unif])
 min_value_diff_unif=np.min([np.min(l) for l in difference_matrix_unif])
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_unif_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_unif_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_unif, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_unif+[length_unif], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_unif, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_unif.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_unif, file)
-
- """
-
-
-""" 
 start_zero = time.time()
 net_zero = Net(input_dim=2,output_dim=1)
 losses_zero, stored_collocations_points_zero, L2_error_zero=fit_adapt_zero(model=net_zero, x_domain=x_domain, t_domain=t_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_zero = time.time()
-
 length_zero = round(end_zero - start_zero,1)
-
 pinn_preds_zero = predict(net_zero, x_domain,t_domain)
 pinn_preds_zero_matrix=np.zeros((len(x_domain), len(t_domain)))
 for i in range(len(x_domain)):
     for j in range(len(t_domain)):
         pinn_preds_zero_matrix[i][j]=(pinn_preds_zero[i*(len(t_domain))+j].item())
-
 difference_matrix_zero=np.abs(analytical_pred_matrix-pinn_preds_zero_matrix)
-
 max_value_diff_zero=np.max([np.max(l) for l in difference_matrix_zero])
 min_value_diff_zero=np.min([np.min(l) for l in difference_matrix_zero])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_zero_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_zero_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_zero, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_zero+[length_zero], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_zero, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_zero.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_zero, file) 
- 
-"""
-
-
-""" 
 
 start_prime = time.time()
 net_prime = Net(input_dim=2,output_dim=1)
 losses_prime, stored_collocations_points_prime, L2_error_prime=fit_adapt_prime(model=net_prime, x_domain=x_domain, t_domain=t_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_prime = time.time()
-
 length_prime = round(end_prime - start_prime,1)
-
 pinn_preds_prime = predict(net_prime, x_domain,t_domain)
 pinn_preds_prime_matrix=np.zeros((len(x_domain), len(t_domain)))
 for i in range(len(x_domain)):
     for j in range(len(t_domain)):
         pinn_preds_prime_matrix[i][j]=(pinn_preds_prime[i*(len(t_domain))+j].item())
-
 difference_matrix_prime=np.abs(analytical_pred_matrix-pinn_preds_prime_matrix)
-
 max_value_diff_prime=np.max([np.max(l) for l in difference_matrix_prime])
 min_value_diff_prime=np.min([np.min(l) for l in difference_matrix_prime])
 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_prime_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_prime_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_prime, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_prime+[length_prime], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_prime, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_prime.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_prime, file) 
-
- """
-
-""" 
 start_second = time.time()
 net_second = Net(input_dim=2,output_dim=1)
 losses_second, stored_collocations_points_second, L2_error_second=fit_adapt_second(model=net_second, x_domain=x_domain, t_domain=t_domain, number_of_points=number_of_points, learning_rate=learning_rate, epochs=epochs, kappa=kappa, c=c, resample_period=resample_period)
 end_second = time.time()
-
 length_second = round(end_second - start_second,1)
-
 pinn_preds_second = predict(net_second, x_domain,t_domain)
 pinn_preds_second_matrix=np.zeros((len(x_domain), len(t_domain)))
 for i in range(len(x_domain)):
     for j in range(len(t_domain)):
         pinn_preds_second_matrix[i][j]=(pinn_preds_second[i*(len(t_domain))+j].item())
-
 difference_matrix_second=np.abs(analytical_pred_matrix-pinn_preds_second_matrix)
-
 max_value_diff_second=np.max([np.max(l) for l in difference_matrix_second])
 min_value_diff_second=np.min([np.min(l) for l in difference_matrix_second])
-
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_second_matrix.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(pinn_preds_second_matrix, file) 
-# Open a file and use dump() 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(difference_matrix_second, file)
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(losses_second+[length_second], file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(L2_error_second, file) 
-# Open a file and use dump()  
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_second.pkl', 'wb') as file: 
-    # A new file will be created 
-    pickle.dump(stored_collocations_points_second, file)
-
- """
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_unif= pickle.load(file)
-losses_unif = info_unif[:-1]
-length_unif=info_unif[-1]
-#print(losses_unif, length_unif)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_unif_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_unif_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_unif = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_unif.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_unif = pickle.load(file) 
-
-
-
-""" 
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-ax2=plt.subplot(gs[0,0])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-divider = make_axes_locatable(ax2)
-cax2 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im2, cax = cax2)
-
-ax1=plt.subplot(gs[0,1])
-im1=ax1.imshow(pinn_preds_unif_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax1.set_xlabel('x')
-ax1.set_ylabel('t')
-plt.title('Output of unif-RAD')
-#plt.colorbar(im1, ax=ax1) 
-divider = make_axes_locatable(ax1)
-cax1 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im1, cax = cax1)
-
-fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c={}, resample_period={}'.format(learning_rate, number_of_points, epochs, kappa, c, resample_period), fontsize=20, y=0.975) 
-
-
-
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax4=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif)), L2_error_unif, alpha=0.8,c='b',label='unif-RAD, t={} s'.format(length_unif)) # prediction of the PINN neural network
-plt.xlabel('Epochs')
-plt.legend(loc="upper right", prop={'size': 25})
-plt.title('$L_2$-error between the ground truth \n and the PINN outputs during training')
-
-ax3=plt.subplot(gs[0,1])
-im3=ax3.imshow(difference_matrix_unif.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Absolute error of unif-RAD')
-#plt.colorbar(im2, ax=ax2) 
-divider = make_axes_locatable(ax3)
-cax3 = divider.append_axes("right", size="5%", pad=0.1)
-cbar = plt.colorbar(im3, cax = cax3)
-fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c={}, resample_period={}'.format(learning_rate, number_of_points, epochs, kappa, c, resample_period), fontsize=20, y=0.975)
-plt.show()
-
-
-
- """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_zero= pickle.load(file)
-losses_zero = info_zero[:-1]
-length_zero=info_zero[-1]
-#print(losses_zero, length_zero)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_zero_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_zero_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_zero = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_zero.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_zero = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_prime= pickle.load(file)
-losses_prime = info_prime[:-1]
-length_prime=info_prime[-1]
-#print(losses_prime, length_prime)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_prime_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_prime_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_prime = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_prime.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_prime = pickle.load(file) 
-
-
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/info_second.pkl', 'rb') as file: 
-    # Call load method to deserialize
-    info_second= pickle.load(file)
-losses_second = info_second[:-1]
-length_second=info_second[-1]
-#print(losses_second, length_second)
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/pinn_preds_second_matrix.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    pinn_preds_second_matrix = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/difference_matrix_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    difference_matrix_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/L2_error_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    L2_error_second = pickle.load(file) 
-with open('/Users/antoinecaradot/Desktop/Hubert Curien/Recherche/Python/PINNs/2D/Diffusion-reaction 2D/Without seeds/Pickle files/stored_collocations_points_second.pkl', 'rb') as file: 
-    # Call load method to deserialize 
-    stored_collocations_points_second = pickle.load(file) 
-
-
-
-
 
 
 print('The L2 error of unif-RAD is : {}'.format(np.mean(difference_matrix_unif.reshape(1,-1)[0]**2)))
@@ -738,7 +427,9 @@ print('The L2 error of grad-RAD is : {}'.format(np.mean(difference_matrix_prime.
 print('The L2 error of hessian-RAD is : {}'.format(np.mean(difference_matrix_second.reshape(1,-1)[0]**2)))
 
 
-#PLOT THE OUTPUT OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
+
+
+#PLOT THE OUTPUT OF THE PINN FOR THE THREE METHODS
 
 max_value_unif=np.max([np.max(l) for l in pinn_preds_unif_matrix])
 min_value_unif=np.min([np.min(l) for l in pinn_preds_unif_matrix])
@@ -754,6 +445,7 @@ min_value_second=np.min([np.min(l) for l in pinn_preds_second_matrix])
 
 min_output=min([min_value_unif, min_value_zero, min_value_prime, min_value_second])
 max_output=max([max_value_unif, max_value_zero, max_value_prime, min_value_second])
+
 
 fig = plt.figure()
 gs = gridspec.GridSpec(2, 2)
@@ -809,23 +501,8 @@ fig.suptitle('Settings: learning_rate={}, nb points={}, epochs={}, tau={}, \n c=
 
 #PLOT THE L2 ERROR OF THE PINN FOR THE THREE METHODS AND THE PINN OUTPUTS
 
-max_value_diff_unif=np.max([np.max(l) for l in difference_matrix_unif])
-min_value_diff_unif=np.min([np.min(l) for l in difference_matrix_unif])
-
-#max_value_diff_zero=np.max([np.max(l) for l in difference_matrix_zero])
-#min_value_diff_zero=np.min([np.min(l) for l in difference_matrix_zero]) 
-
-max_value_diff_prime=np.max([np.max(l) for l in difference_matrix_prime])
-min_value_diff_prime=np.min([np.min(l) for l in difference_matrix_prime])
-
-max_value_diff_second=np.max([np.max(l) for l in difference_matrix_second])
-min_value_diff_second=np.min([np.min(l) for l in difference_matrix_second])
-
 min_heatmap=min([min_value_diff_unif, min_value_diff_prime, min_value_diff_second])
 max_heatmap=max([max_value_diff_unif, max_value_diff_prime, min_value_diff_second])
-
-
-
 
 fig = plt.figure()
 gs = gridspec.GridSpec(2, 2)
@@ -842,7 +519,6 @@ cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cax1.tick_params(labelsize=26)
 cbar = plt.colorbar(im1, cax = cax1)
 
-
 ax2=plt.subplot(gs[0,0])
 im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
 ax2.set_xlabel('x', fontsize=40)
@@ -858,7 +534,7 @@ cbar = plt.colorbar(im2, cax = cax2)
 #im2=ax2.imshow(difference_matrix_zero.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin=min_heatmap, vmax=max_heatmap)
 #ax2.set_xlabel('x')
 #ax2.set_ylabel('t')
-#plt.title('Absolute error of res-RAD')
+#plt.title('Erreur de res-RAD')
 #plt.colorbar(im2, ax=ax2)
 #divider = make_axes_locatable(ax2)
 #cax2 = divider.append_axes("right", size="5%", pad=0.1)
@@ -896,11 +572,7 @@ plt.subplots_adjust(hspace = 0.6)
 plt.figure()
 
 
-
-
-
 plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif))[0::100], L2_error_unif[0::100], alpha=0.8,c='b',label='unif-RAD, t={} s'.format(length_unif)) # prediction of the PINN neural network
-#plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar))[0::100], L2_error_rar[0::100], alpha=0.8,c='brown',label='RAR sampling') # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero))[0::100], L2_error_zero[0::100], alpha=0.8,c='orange',label="res-RAD, t={} s".format(length_zero)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime))[0::100], L2_error_prime[0::100], alpha=0.8,c='r',label="grad-RAD, t={} s".format(length_prime)) # prediction of the PINN neural network
 plt.plot(np.linspace(1, len(L2_error_second), len(L2_error_second))[0::100], L2_error_second[0::100], alpha=0.8,c='g',label="hessian-RAD, t={} s".format(length_second)) # prediction of the PINN neural network
@@ -909,5 +581,3 @@ plt.xlabel('Epochs')
 plt.legend(loc="upper right", prop={'size': 25})
 plt.title('$L_2$-error between the ground truth \n and the PINN outputs during training')
 plt.show()
-
-
