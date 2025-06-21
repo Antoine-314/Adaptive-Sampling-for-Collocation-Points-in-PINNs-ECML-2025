@@ -51,21 +51,6 @@ def R(z:torch.Tensor):
     return torch.exp(-z[:,1].reshape(-1,1))*(3*torch.sin(2*z[:,0].reshape(-1,1))/2+8*torch.sin(3*z[:,0].reshape(-1,1))/3+15*torch.sin(4*z[:,0].reshape(-1,1))/4+63*torch.sin(8*z[:,0].reshape(-1,1))/8)
 
 
-""" 
-#PLOT THE ANALYTICAL SOLUTION
-x_domain=np.linspace(-math.pi, math.pi, 1000)
-t_domain=np.linspace(0, 1, 1000)
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-fig = plt.figure() #imshow represents the matrix visually, so the columns gives the verticals, and the lines the horizontals. As x is used to construct the lines, it will appear on the "ordonnées" axis on imshow. So to put it on the "abscisses" axis, we use transpose()
-ax=plt.subplot()
-im=ax.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],cmap='viridis', aspect=2*math.pi)
-ax.set_xlabel('x')
-ax.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im, ax=ax) 
-plt.show()
-"""
-
 
 
 # CREATE A FUNCTION TO TURN TWO LISTS INTO A GRID
@@ -78,13 +63,6 @@ def np_to_th(z:np.array):
     n_samples = z.shape[0]
     return torch.from_numpy(z).to(torch.float64).reshape(n_samples, -1).requires_grad_(True) # float64 is important to get enough precision when we use torch.sin(x) for x close to \pm pi
 
-#x_domain=np.linspace(-math.pi,math.pi,3)
-#print(x_domain)
-#print(np_to_th(x_domain))
-#print(initial_solution(x_domain))
-#print(initial_solution_tensor(np_to_th(x_domain)))
-
-
 
 
 
@@ -96,8 +74,8 @@ class Net(nn.Module):
         input_dim, # dimension of the input layer
         output_dim, # dimension of the output layer
         n_units=20, # number of neurones in each hidden layer
-    ) -> None: #  ?????????????????????????????????????????????????????????????????????????????????????????? 
-        super().__init__() #  ??????????????????????????????????????????????????????????????????????????????
+    ) -> None: #   
+        super().__init__() #  
         self.n_units = n_units
         self.layers = nn.Sequential(
             nn.Linear(input_dim, self.n_units),
@@ -118,18 +96,12 @@ class Net(nn.Module):
         return ((input[:,0]-math.pi)*(input[:,0]+math.pi)*input[:,1]*(out.squeeze())+initial_solution_tensor(input[:,0])).squeeze().reshape(-1,1)
         #return input[:,0].reshape(-1,1)*(1-input[:,0].reshape(-1,1))*input[:,1].reshape(-1,1)*(1-input[:,1].reshape(-1,1))*out
 
-#t_domain=np.linspace(0, 1, 2)
-#x_domain=np.linspace(-2, 2, 2)
-#net=Net(input_dim=2,output_dim=1)
-#print(net(np_to_th(make_grid(x_domain,t_domain))))
-
-
-
 
 def predict(model, x,y): # predict on the fitted model
         model.eval() # model.eval() tells your model that you are evaluating the model.
         out = model(np_to_th(make_grid(x,y)))
         return out.detach().numpy() 
+
 
 # COMPUTE THE DERIVATIVE
 def grad(outputs: torch.Tensor, inputs: torch.Tensor): # Computes the partial derivative of an output with respect to an input
@@ -139,16 +111,6 @@ def grad(outputs: torch.Tensor, inputs: torch.Tensor): # Computes the partial de
         inputs: (N, D) tensor
     """
     return torch.autograd.grad(outputs, inputs, grad_outputs=torch.ones_like(outputs), create_graph=True) 
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -163,9 +125,7 @@ def physics_loss_mean(model: torch.nn.Module, evaluation_points: torch.Tensor): 
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
     
     return torch.mean(PDE**2)  # takes the mean of the square of the residue of the equation
-#t_domain=np.linspace(0, 1, 2)
-#x_domain=np.linspace(-2, 2, 5)
-#print(physics_loss_mean(Net(input_dim=2,output_dim=1), np_to_th(make_grid(x_domain,t_domain))))
+
    
 
 # DEFINE THE TRAINING PROCEDURE FOR THE RANDOM UNIFORM METHOD
@@ -173,7 +133,6 @@ def fit_unif(model: torch.nn.Module, x_domain, t_domain, number_of_points, learn
     domain_points=make_grid(x_domain,t_domain)
     domain_tensor=np_to_th(domain_points)
     model_2=copy.deepcopy(model)
-
 
     optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -209,106 +168,6 @@ def fit_unif(model: torch.nn.Module, x_domain, t_domain, number_of_points, learn
 
 
 
-"""
-# RUN THE NEURAL NETWORK WITH UNIFORM SAMPLING
-learning_rate=1e-4
-epochs=20000
-number_of_points=50
-resample_period=1000
-x_domain=np.linspace(-math.pi, math.pi, 100)
-t_domain=np.linspace(0, 1, 100)
-
-
-net_unif = Net(input_dim=2,output_dim=1)
-start_unif = time.time()
-losses_unif,stored_collocations_points_unif,L2_error_unif=fit_unif(model=net_unif, x_domain=x_domain, t_domain=t_domain, number_of_points=number_of_points,learning_rate=learning_rate, epochs=epochs, resample_period=resample_period)
-end_unif = time.time()
-length_unif = round(end_unif - start_unif,1)
-#print("It took", length_unif, "seconds")
-
-
-pinn_preds_unif = predict(net_unif, x_domain,t_domain)
-
-pinn_preds_unif_matrix=np.zeros((len(x_domain), len(t_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(t_domain)):
-        pinn_preds_unif_matrix[i][j]=(pinn_preds_unif[i*(len(t_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-
-difference_matrix_unif=np.abs(analytical_pred_matrix-pinn_preds_unif_matrix)
-
-max_value_diff_unif=np.max([np.max(l) for l in difference_matrix_unif])
-min_value_diff_unif=np.min([np.min(l) for l in difference_matrix_unif])
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_unif), len(losses_unif)),losses_unif,c='orange',label='Loss of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with random uniform sampling. t={} s. \n  learning_rate={}, nb points={}, resample_period={}'.format(length_unif,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_unif_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Output of the PINN after {} epochs with random uniform sampling. \n  learning_rate={}, nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-
-
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_unif), len(L2_error_unif)),L2_error_unif,c='orange',label='$L_2$-error of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with random uniform sampling. \n  nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_unif.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_unif, vmax = max_value_diff_unif)
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Absolute error between the uniform PINN and the analytical solution after {} epochs. \n learning_rate={}, nb points={}, resample_period={}'.format(epochs, learning_rate, number_of_points, resample_period))
-plt.colorbar(im2, ax=ax2) 
-
-
-plt.show()
- """
-
-"""
-# PLOT THE EVALUATION POINTS
-x_eval=[z[0] for z in stored_collocations_points_unif[-1]]
-t_eval=[z[1] for z in stored_collocations_points_unif[-1]]
-plt.scatter(x_eval,t_eval)
-plt.xlabel('x')
-plt.ylabel('t')
-plt.title('Last sample points used for the training phase. \n nb conformal points ={}'.format(number_of_points))
-plt.show()
-"""
-
-
-
-
-
 
 
 
@@ -323,180 +182,6 @@ def physics_loss_zero(model: torch.nn.Module, evaluation_points: torch.Tensor): 
     PDE = d2u_dx2+R(evaluation_points).squeeze()-du_dt # we use .squeeze() on R for the same reason as above
 
     return (PDE**2).detach().numpy()
-#t_domain=np.linspace(0, 1, 2)
-#x_domain=np.linspace(-2, 2, 5)
-#print(physics_loss_zero(Net(input_dim=2,output_dim=1), np_to_th(make_grid(x_domain,t_domain))))
-
-
-# DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH RAR (NOT GREEDY)
-def fit_adapt_rar(model: torch.nn.Module, x_domain, t_domain, learning_rate, epochs, number_of_points, resample_period): # this defines the training phase of the network
-    domain_points=make_grid(x_domain,t_domain)
-    domain_tensor=np_to_th(domain_points)
-    model_2=copy.deepcopy(model)
-    #evaluation_points = np.random.uniform(low=[x_domain[0],t_domain[0]], high=[x_domain[-1],t_domain[-1]], size=(number_of_points,2))
-    #evaluation_points_tensor=np_to_th(evaluation_points)
-
-    optimiser = optim.Adam(model.parameters(), lr=learning_rate)
-
-    model.train() # model.train() tells your model that you are training the model. This helps inform layers such as Dropout and BatchNorm, which are designed to behave differently during training and evaluation. For instance, in training mode, BatchNorm updates a moving average on each new batch; whereas, for evaluation mode, these updates are frozen.
-        
-    losses_total = []
-    L2_error=[]
-    stored_collocations_points=[]
-    
-    for ep in range(1,epochs+1):
-
-        optimiser.zero_grad() # Sets gradients of all model parameters to zero because PyTorch accumulates the gradients on subsequent backward passes
-            
-        # COMPUTE THE COLLOCATION POINTS
-        if ep==1 or ep % resample_period ==0: #CHANGING TOO OFTEN THE EVALUATION POINTS SLOWS DECREASES THE EFFICIENCY
-            optimiser.zero_grad()
-            total_points=np.random.uniform(low=[x_domain[0],t_domain[0]],high=[x_domain[-1],t_domain[-1]], size=(100*number_of_points,2))
-            values_of_residues=np.abs(physics_loss_zero(model, np_to_th(total_points)))
-            indices_of_highest_values= np.argpartition(values_of_residues, -number_of_points)[-number_of_points:]
-            collocation_points=total_points[indices_of_highest_values]
-            stored_collocations_points.append(collocation_points)
-
-            collocation_points_tensor=np_to_th(collocation_points)
-
-        if ep==epochs:
-                last_prediction=predict(model, x_domain, t_domain)
-
-        model_2.load_state_dict(model.state_dict())
-        model_2.zero_grad(set_to_none=True)
-        L2_error.append(torch.mean((model_2(domain_tensor)-np_to_th(np.array([analytical_solution(Z) for Z in domain_points])))**2).item())
-        losses_total.append(physics_loss_mean(model_2, domain_tensor).item()) # save the loss value on the whole domain
-
-        optimiser.zero_grad() 
-        loss_value = physics_loss_mean(model, collocation_points_tensor) # compute the loss on the collocation points
-        loss_value.backward() # Compute gradient of the loss w.r.t. to the parameters 
-        optimiser.step() # Modify the parameters by subtracting the gradient 
-       
-        """ 
-        if ep % int(epochs / 10) == 0 or ep==1:
-            print(f"Epoch {ep}/{epochs}, loss: {losses[-1]:.8f}") # print the loss every epochs/10 epochs  """
-    return losses_total, stored_collocations_points, L2_error, last_prediction
-
-
-"""
-# RUN THE NEURAL NETWORK WITH THE ADAPTATIVE SAMPLING WITH RAR
-learning_rate=1e-4
-epochs=2001
-number_of_points=50
-resample_period=1000
-kappa=1/2
-c=0
-x_domain=np.linspace(-math.pi, math.pi, 100)
-t_domain=np.linspace(0, 1, 100)
-
-
-net_rar = Net(input_dim=2,output_dim=1)
-start_rar = time.time()
-losses_rar,stored_collocations_points_rar,L2_error_rar,last_prediction_rar=fit_adapt_rar(model=net_rar, x_domain=x_domain, t_domain=t_domain, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, resample_period=resample_period)
-end_rar = time.time()
-length_rar = round(end_rar - start_rar,1)
-
-pinn_preds_rar = predict(net_rar, x_domain,t_domain)
-
-pinn_preds_rar_matrix=np.zeros((len(x_domain), len(t_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(t_domain)):
-        pinn_preds_rar_matrix[i][j]=(pinn_preds_rar[i*(len(t_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-
-difference_matrix_rar=np.abs(analytical_pred_matrix-pinn_preds_rar_matrix)
-
-max_value_diff_rar=np.max([np.max(l) for l in difference_matrix_rar])
-min_value_diff_rar=np.min([np.min(l) for l in difference_matrix_rar])
-
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK WITH ADAPTATIVE SAMPLING WITH RAR TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_rar), len(losses_rar)),losses_rar,c='orange',label='Loss of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with adaptative sampling with RAR. t={} s. \n  learning_rate={}, nb points={}, resample_period={}'.format(length_rar,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_rar_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Output of the PINN after {} epochs with adaptative sampling with $f^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_rar), len(L2_error_rar)),L2_error_rar,c='orange',label='$L_2$-error of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('$L_2$')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with RAR. \n  nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_rar.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_rar, vmax = max_value_diff_rar)
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Absolute error between the PINN with RAR and the analytical solution after {} epochs. \n learning_rate={}, nb points={}, resample_period={}'.format(epochs, learning_rate, number_of_points, resample_period))
-plt.colorbar(im2, ax=ax2) 
-
-
-
-# PLOT THE COLLOCATIONS POINTS AT REGULAR INTERVALS
-parameters=[i for i in range(len(stored_collocations_points_rar))] # the range of the number of points we want to consider
-number_of_column=4 # the number of columns in the plot
-figure, axis = plt.subplots(math.ceil(len(parameters)/number_of_column),number_of_column)
-figure.tight_layout()
-grid_indices=[1+i for i in range(math.ceil(len(parameters)/number_of_column)*number_of_column)]
-#print(grid_indices)
-#print(parameters)
-#print(axis.flatten())
-
-for par, ax in zip(parameters, axis.flatten()[:len(parameters)]):
-    ax.scatter(stored_collocations_points_rar[par][:,0],stored_collocations_points_rar[par][:,1], c='k',marker="o")
-    if par==0:
-        ax.set_title("Epoch=1")
-    else:
-        ax.set_title("Epoch={}".format(par*resample_period))
-    
-for i in range(len(grid_indices)-len(parameters)):
-    axis.flatten()[-1-i].set_visible(False) 
-figure.subplots_adjust(top=0.83)
-figure.suptitle("Plots of the collocation points at each resampling with RAR. \n learning_rate={}, number_of_points={}".format(learning_rate,number_of_points), fontsize=20)
-plt.show()
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -516,7 +201,6 @@ def fit_adapt_zero(model: torch.nn.Module, x_domain, t_domain, learning_rate, ep
     L2_error=[]
     stored_collocations_points=[]
 
-    
     for ep in range(1,epochs+1):
         if ep==1:
             collocation_points = np.random.uniform(low=[x_domain[0],t_domain[0]], high=[x_domain[-1],t_domain[-1]], size=(number_of_points,2))
@@ -556,125 +240,6 @@ def fit_adapt_zero(model: torch.nn.Module, x_domain, t_domain, learning_rate, ep
 
 
 
-"""
-# RUN THE NEURAL NETWORK WITH THE ADAPTATIVE SAMPLING WITH THE ZERO DERIVATIVE
-learning_rate=1e-4
-epochs=2001
-number_of_points=50
-resample_period=1000
-kappa=1/2
-c=0
-x_domain=np.linspace(-math.pi, math.pi, 100)
-t_domain=np.linspace(0, 1, 100)
-
-
-net_zero = Net(input_dim=2,output_dim=1)
-start_zero = time.time()
-losses_zero,stored_collocations_points_zero,L2_error_zero=fit_adapt_zero(model=net_zero, x_domain=x_domain, t_domain=t_domain, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
-end_zero = time.time()
-length_zero = round(end_zero - start_zero,1)
-
-pinn_preds_zero = predict(net_zero, x_domain,t_domain)
-
-pinn_preds_zero_matrix=np.zeros((len(x_domain), len(t_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(t_domain)):
-        pinn_preds_zero_matrix[i][j]=(pinn_preds_zero[i*(len(t_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-
-difference_matrix_zero=np.abs(analytical_pred_matrix-pinn_preds_zero_matrix)
-
-max_value_diff_zero=np.max([np.max(l) for l in difference_matrix_zero])
-min_value_diff_zero=np.min([np.min(l) for l in difference_matrix_zero])
-
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK WITH ADAPTATIVE SAMPLING WITH THE ZERO DERIVATIVE TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_zero), len(losses_zero)),losses_zero,c='orange',label='Loss of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with adaptative sampling with $f^\prime$. t={} s. \n  learning_rate={}, nb points={}, resample_period={}'.format(length_zero,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_zero_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Output of the PINN after {} epochs with adaptative sampling with $f^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-
-
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_zero), len(L2_error_zero)),L2_error_zero,c='orange',label='$L_2$-error of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with $f^\prime$. \n  nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_zero.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_zero, vmax = max_value_diff_zero)
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Absolute error between the PINN with $f^\prime$ and the analytical solution after {} epochs. \n learning_rate={}, nb points={}, resample_period={}'.format(epochs, learning_rate, number_of_points, resample_period))
-plt.colorbar(im2, ax=ax2) 
-
-
-# PLOT THE COLLOCATIONS POINTS AT REGULAR INTERVALS
-parameters=[i for i in range(len(stored_collocations_points_zero))] # the range of the number of points we want to consider
-number_of_column=4 # the number of columns in the plot
-figure, axis = plt.subplots(math.ceil(len(parameters)/number_of_column),number_of_column)
-figure.tight_layout()
-grid_indices=[1+i for i in range(math.ceil(len(parameters)/number_of_column)*number_of_column)]
-#print(grid_indices)
-#print(parameters)
-#print(axis.flatten())
-
-for par, ax in zip(parameters, axis.flatten()[:len(parameters)]):
-    ax.scatter(stored_collocations_points_zero[par][:,0],stored_collocations_points_zero[par][:,1], c='k',marker="o")
-    if par==0:
-        ax.set_title("Epoch=1")
-    else:
-        ax.set_title("Epoch={}".format(par*resample_period))
-    
-for i in range(len(grid_indices)-len(parameters)):
-    axis.flatten()[-1-i].set_visible(False) 
-figure.subplots_adjust(top=0.83)
-figure.suptitle("Plots of the collocation points at each resampling with $f$. \n learning_rate={}, number_of_points={}".format(learning_rate,number_of_points), fontsize=20)
-plt.show()
-
- """
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # DEFINE THE NORM OF THE DERIVATIVE OF THE LOSS FUNCTION FOR THE PINN
@@ -692,10 +257,6 @@ def deriv_physics_loss(model: torch.nn.Module, evaluation_points: torch.Tensor):
 
     return torch.sqrt(gradient_x**2+gradient_t**2).detach().numpy()
     
-#t_domain=np.linspace(0, 1, 2)
-#x_domain=np.linspace(-2, 2, 5)
-#print(deriv_physics_loss(Net(input_dim=2,output_dim=1), np_to_th(make_grid(x_domain,t_domain))))
-
 
 
 # DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH THE FIRST DERIVATIVE
@@ -752,128 +313,6 @@ def fit_adapt_prime(model: torch.nn.Module, x_domain, t_domain, learning_rate, e
         """
     return losses_total,stored_collocations_points,L2_error
     
-"""
-# RUN THE NEURAL NETWORK WITH THE ADAPTATIVE SAMPLING WITH THE FIRST DERIVATIVE
-learning_rate=1e-4
-epochs=2001
-number_of_points=50
-resample_period=1000
-kappa=1/2
-c=0
-x_domain=np.linspace(-math.pi, math.pi, 100)
-t_domain=np.linspace(0, 1, 100)
-
-
-net_prime = Net(input_dim=2,output_dim=1)
-start_prime = time.time()
-losses_prime,stored_collocations_points_prime,L2_error_prime=fit_adapt_prime(model=net_prime, x_domain=x_domain, t_domain=t_domain, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
-end_prime = time.time()
-length_prime = round(end_prime - start_prime,1)
-
-pinn_preds_prime = predict(net_prime, x_domain,t_domain)
-
-pinn_preds_prime_matrix=np.zeros((len(x_domain), len(t_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(t_domain)):
-        pinn_preds_prime_matrix[i][j]=(pinn_preds_prime[i*(len(t_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-
-difference_matrix_prime=np.abs(analytical_pred_matrix-pinn_preds_prime_matrix)
-
-max_value_diff_prime=np.max([np.max(l) for l in difference_matrix_prime])
-min_value_diff_prime=np.min([np.min(l) for l in difference_matrix_prime])
-
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK WITH ADAPTATIVE SAMPLING WITH THE FIRST DERIVATIVE TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_prime), len(losses_prime)),losses_prime,c='orange',label='Loss of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with adaptative sampling with $f^\prime$. t={} s. \n  learning_rate={}, nb points={}, resample_period={}'.format(length_prime,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_prime_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Output of the PINN after {} epochs with adaptative sampling with $f^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_prime), len(L2_error_prime)),L2_error_prime,c='orange',label='$L_2$-error of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with $f^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_prime.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_prime, vmax = max_value_diff_prime)
-ax1.set_xlabel('x')
-ax1.set_ylabel('t')
-plt.title('Absolute error between the PINN with $f^\prime$ and the analytical solution after {} epochs. \n learning_rate={}, nb points={}, resample_period={}'.format(epochs, learning_rate, number_of_points, resample_period))
-plt.colorbar(im2, ax=ax2) 
-
-
-
-# PLOT THE COLLOCATIONS POINTS AT REGULAR INTERVALS
-parameters=[i for i in range(len(stored_collocations_points_prime))] # the range of the number of points we want to consider
-number_of_column=4 # the number of columns in the plot
-figure, axis = plt.subplots(math.ceil(len(parameters)/number_of_column),number_of_column)
-figure.tight_layout()
-grid_indices=[1+i for i in range(math.ceil(len(parameters)/number_of_column)*number_of_column)]
-#print(grid_indices)
-#print(parameters)
-#print(axis.flatten())
-
-for par, ax in zip(parameters, axis.flatten()[:len(parameters)]):
-    ax.scatter(stored_collocations_points_prime[par][:,0],stored_collocations_points_prime[par][:,1], c='k',marker="o")
-    if par==0:
-        ax.set_title("Epoch=1")
-    else:
-        ax.set_title("Epoch={}".format(par*resample_period))
-    
-for i in range(len(grid_indices)-len(parameters)):
-    axis.flatten()[-1-i].set_visible(False) 
-figure.subplots_adjust(top=0.83)
-figure.suptitle("Plots of the collocation points at each resampling with $f^\prime$. \n learning_rate={}, number_of_points={}".format(learning_rate,number_of_points), fontsize=20)
-plt.show()
-
- """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # DEFINE THE NORM OF THE SECOND DERIVATIVE OF THE LOSS FUNCTION FOR THE PINN
@@ -895,11 +334,6 @@ def deriv_sec_physics_loss(model: torch.nn.Module, evaluation_points: torch.Tens
 
     return torch.sqrt(d2PDE2_dx2**2+d2PDE2_dt2**2+d2PDE2_dxdt**2+d2PDE2_dtdx**2).detach().numpy()
     
-#t_domain=np.linspace(0, 1, 2)
-#x_domain=np.linspace(-2, 2, 5)
-#print(np_to_th(make_grid(x_domain,t_domain)).size())
-#print(deriv_sec_physics_loss(Net(input_dim=2,output_dim=1), np_to_th(make_grid(x_domain,t_domain))))
-
 
 
 # DEFINE THE ADAPTATIVE TRAINING PROCEDURE WITH THE SECOND DERIVATIVE
@@ -918,7 +352,6 @@ def fit_adapt_second(model: torch.nn.Module, x_domain, t_domain, learning_rate, 
     L2_error=[]
     stored_collocations_points=[]
 
-    
     for ep in range(1,epochs+1):
         if ep==1:
             collocation_points = np.random.uniform(low=[x_domain[0],t_domain[0]], high=[x_domain[-1],t_domain[-1]], size=(number_of_points,2))
@@ -956,114 +389,6 @@ def fit_adapt_second(model: torch.nn.Module, x_domain, t_domain, learning_rate, 
         """
     return losses_total,stored_collocations_points,L2_error
     
-"""
-# RUN THE NEURAL NETWORK WITH THE ADAPTATIVE SAMPLING WITH THE SECOND DERIVATIVE
-learning_rate=1e-4
-epochs=2001
-number_of_points=50
-resample_period=1000
-kappa=1/2
-c=0
-x_domain=np.linspace(-math.pi, math.pi, 100)
-t_domain=np.linspace(0, 1, 100)
-
-
-net_second = Net(input_dim=2,output_dim=1)
-start_second = time.time()
-losses_second,stored_collocations_points_second,L2_error_second=fit_adapt_second(model=net_second, x_domain=x_domain, t_domain=t_domain, learning_rate=learning_rate, epochs=epochs, number_of_points=number_of_points, kappa=kappa, c=c, resample_period=resample_period)
-end_second = time.time()
-length_second = round(end_second - start_second,1)
-
-pinn_preds_second = predict(net_second, x_domain,t_domain)
-
-pinn_preds_second_matrix=np.zeros((len(x_domain), len(t_domain)))
-for i in range(len(x_domain)):
-    for j in range(len(t_domain)):
-        pinn_preds_second_matrix[i][j]=(pinn_preds_second[i*(len(t_domain))+j].item())
-
-analytical_pred_matrix = np.array([analytical_solution_x_t(x,t) for x in x_domain for t in t_domain]).reshape(len(x_domain),len(t_domain))
-
-difference_matrix_second=np.abs(analytical_pred_matrix-pinn_preds_second_matrix)
-
-max_value_diff_second=np.max([np.max(l) for l in difference_matrix_second])
-min_value_diff_second=np.min([np.min(l) for l in difference_matrix_second])
-
-
-# PLOT THE LOSS AND THE OUTPUT OF THE NETWORK WITH ADAPTATIVE SAMPLING WITH THE FIRST DERIVATIVE TO COMPARE WITH THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 2)
-
-ax1=plt.subplot(gs[:,0])
-plt.plot(np.linspace(1, len(losses_second), len(losses_second)),losses_second,c='orange',label='Loss of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('Loss of the PINN with adaptative sampling with $f^\prime$$^\prime$. t={} s. \n  learning_rate={}, nb points={}, resample_period={}'.format(length_second,learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(analytical_pred_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax2.set_xlabel('x')
-ax2.set_ylabel('t')
-plt.title('Output of the analytical solution')
-fig.colorbar(im2, ax=ax2) 
-
-ax3=plt.subplot(gs[1,1])
-im3=ax3.imshow(pinn_preds_second_matrix.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='viridis')
-ax3.set_xlabel('x')
-ax3.set_ylabel('t')
-plt.title('Output of the PINN after {} epochs with adaptative sampling with $f^\prime$$^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(epochs,learning_rate,number_of_points, resample_period))
-fig.colorbar(im3, ax=ax3) 
-
-plt.subplots_adjust(hspace = .3)
-
-
-
-# PLOT THE L2 ERROR AND THE ABSOLUTE DIFFERENCE BETWEEN THE OUTPUT OF THE NETWORK AND THE ANALYTICAL SOLUTION
-fig = plt.figure()
-gs = gridspec.GridSpec(1, 2)
-
-ax1=plt.subplot(gs[0,0])
-plt.plot(np.linspace(1, len(L2_error_second), len(L2_error_second)),L2_error_second,c='orange',label='$L_2$-error of the PINN with uniform sampling') # plot the loss evolution of the PINN
-plt.xlabel('Number of epochs')
-plt.ylabel('Loss')
-plt.legend(loc="upper right")
-plt.title('$L_2$-error of the PINN with $f^\prime$$^\prime$. \n  learning_rate={}, nb points={}, resample_period={}'.format(learning_rate,number_of_points, resample_period))
-
-ax2=plt.subplot(gs[0,1])
-im2=ax2.imshow(difference_matrix_second.transpose(),origin='lower',extent=[x_domain[0]-(x_domain[-1]-x_domain[0])/(2*len(x_domain)),x_domain[-1]+(x_domain[-1]-x_domain[0])/(2*len(x_domain)),t_domain[0]-(t_domain[-1]-t_domain[0])/(2*len(t_domain)),t_domain[-1]+(t_domain[-1]-t_domain[0])/(2*len(t_domain))],aspect='auto',cmap='plasma', vmin = min_value_diff_second, vmax = max_value_diff_second)
-ax1.set_xlabel('x')
-ax1.set_ylabel('t')
-plt.title('Absolute error between the PINN with $f^\prime$$^\prime$ and the analytical solution after {} epochs. \n learning_rate={}, nb points={}, resample_period={}'.format(epochs, learning_rate, number_of_points, resample_period))
-plt.colorbar(im2, ax=ax2) 
-
-
-
-# PLOT THE COLLOCATIONS POINTS AT REGULAR INTERVALS
-parameters=[i for i in range(len(stored_collocations_points_second))] # the range of the number of points we want to consider
-number_of_column=4 # the number of columns in the plot
-figure, axis = plt.subplots(math.ceil(len(parameters)/number_of_column),number_of_column)
-figure.tight_layout()
-grid_indices=[1+i for i in range(math.ceil(len(parameters)/number_of_column)*number_of_column)]
-#print(grid_indices)
-#print(parameters)
-#print(axis.flatten())
-
-for par, ax in zip(parameters, axis.flatten()[:len(parameters)]):
-    ax.scatter(stored_collocations_points_second[par][:,0],stored_collocations_points_second[par][:,1], c='k',marker="o")
-    if par==0:
-        ax.set_title("Epoch=1")
-    else:
-        ax.set_title("Epoch={}".format(par*resample_period))
-    
-for i in range(len(grid_indices)-len(parameters)):
-    axis.flatten()[-1-i].set_visible(False) 
-figure.subplots_adjust(top=0.83)
-figure.suptitle("Plots of the collocation points at each resampling with $f^\prime$$^\prime$. \n learning_rate={}, number_of_points={}".format(learning_rate,number_of_points), fontsize=20)
-plt.show()
-
- """
-
-
 
 
 
